@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Taarbæk Tennis Klub – Holdsøgning 2026</title>
+<style>
+  :root {
+    --navy: #1B3A5C;
+    --blue: #2E6DA4;
+    --blue-light: #5BA3D9;
+    --u8-bg: #D6EFFF; --u8-fg: #0A4A7A; --u8-border: #0A4A7A;
+    --u10-bg: #D5F0E8; --u10-fg: #0A4A2A; --u10-border: #0A4A2A;
+    --u12-bg: #FFF3D6; --u12-fg: #7A4A0A; --u12-border: #7A4A0A;
+    --u14-bg: #F0D6FF; --u14-fg: #4A0A7A; --u14-border: #4A0A7A;
+    --open-bg: #F0F0F0; --open-fg: #444; --open-border: #888;
+    --red: #C0392B;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #d1dde8;
+    --surface: #f8fafc;
+    --white: #ffffff;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(27,58,92,.10);
+    --shadow-lg: 0 8px 32px rgba(27,58,92,.14);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #eef3f8;
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: var(--navy);
+    padding: 28px 24px 24px;
+    text-align: center;
+  }
+  .site-header .club-name {
+    color: rgba(255,255,255,.6);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .site-header h1 {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .site-header .subtitle {
+    color: rgba(255,255,255,.55);
+    font-size: 13px;
+  }
+
+  /* ── Search box ── */
+  .search-wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 28px 20px 0;
+  }
+  .search-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: .02em;
+  }
+  .search-box {
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 14px 48px 14px 18px;
+    font-size: 17px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    box-shadow: var(--shadow);
+  }
+  .search-box input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(46,109,164,.15);
+  }
+  .search-box input::placeholder { color: #aab4be; }
+  .search-icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aab4be;
+    font-size: 20px;
+    pointer-events: none;
+  }
+
+  /* ── Suggestions dropdown ── */
+  .suggestions {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: var(--shadow-lg);
+    max-height: 260px;
+    overflow-y: auto;
+    display: none;
+    position: relative;
+    z-index: 10;
+  }
+  .suggestions.visible { display: block; }
+  .suggestion-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f4f8;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background .1s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item.focused { background: #eef5fc; }
+  .suggestion-name { font-size: 15px; font-weight: 500; }
+  .suggestion-meta { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  .suggestion-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .no-results-drop {
+    padding: 16px 18px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+  }
+
+  /* ── Results area ── */
+  .results {
+    max-width: 680px;
+    margin: 20px auto 40px;
+    padding: 0 20px;
+  }
+
+  /* Unplaced warning */
+  .unplaced-card {
+    background: #fff5f5;
+    border: 1.5px solid #f5c6c6;
+    border-left: 5px solid var(--red);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .unplaced-card .uc-title {
+    font-size: 15px; font-weight: 600; color: var(--red);
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .unplaced-card .uc-body { font-size: 13px; color: #7f1d1d; line-height: 1.6; }
+
+  /* Result player card */
+  .player-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .pc-top {
+    background: var(--navy);
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .pc-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,.3);
+  }
+  .pc-name { color: #fff; font-size: 18px; font-weight: 600; }
+  .pc-timer { color: rgba(255,255,255,.6); font-size: 13px; margin-top: 2px; }
+  .pc-price {
+    margin-left: auto; text-align: right;
+    color: rgba(255,255,255,.5); font-size: 11px;
+  }
+  .pc-price strong { display: block; color: #fff; font-size: 16px; }
+
+  /* Hold rows */
+  .holds-section { padding: 0; }
+  .hold-row {
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .hold-row:last-child { border-bottom: none; }
+
+  /* Big hero banner per hold */
+  .hold-hero {
+    display: flex;
+    align-items: stretch;
+    min-height: 90px;
+  }
+  .hold-color-bar { width: 8px; flex-shrink: 0; }
+
+  .hold-number-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 20px;
+    min-width: 110px;
+    border-right: 1px solid rgba(0,0,0,.07);
+  }
+  .hold-number-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; opacity: .6; margin-bottom: 4px;
+  }
+  .hold-number-big {
+    font-size: 40px; font-weight: 800; line-height: 1;
+  }
+  .age-pill {
+    font-size: 9px; font-weight: 700; padding: 3px 8px;
+    border-radius: 20px; margin-top: 6px;
+  }
+
+  .hold-details {
+    flex: 1;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+  }
+  .hold-day-time {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .day-chip {
+    font-size: 15px; font-weight: 700; color: var(--navy);
+  }
+  .time-chip {
+    font-size: 14px; font-weight: 600;
+    background: var(--navy); color: #fff;
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .wish-tag {
+    font-size: 10px; color: var(--muted); font-style: italic;
+    padding: 2px 8px; border-radius: 10px;
+    background: #f0f4f8; border: 1px solid var(--border);
+  }
+  .hold-info { flex: 1; padding: 0 18px 14px; }
+
+  /* Group members */
+  .group-label {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 8px;
+  }
+  .member-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .member-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px 4px 6px;
+    font-size: 12px; cursor: pointer; transition: background .1s;
+  }
+  .member-chip:hover { background: #dbeafe; border-color: #93c5fd; }
+  .member-chip .chip-av {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 700; flex-shrink: 0;
+  }
+  .member-chip.self {
+    background: #dbeafe; border-color: var(--blue);
+    font-weight: 600;
+  }
+  .member-chip.self .chip-av { background: var(--navy); }
+  .empty-group { font-size: 12px; color: var(--muted); font-style: italic; }
+
+  /* Empty / initial state */
+  .state-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+  }
+  .state-empty .big-icon { font-size: 48px; margin-bottom: 16px; opacity: .4; }
+  .state-empty h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; font-weight: 500; }
+  .state-empty p { font-size: 14px; line-height: 1.6; }
+
+  /* Footer */
+  .site-footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 11px;
+    color: #94a3b8;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+  }
+
+  /* Back button */
+  .back-btn {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    cursor: pointer;
+    margin: 14px auto 0;
+    max-width: 560px;
+    width: calc(100% - 40px);
+    transition: all .15s;
+  }
+  .back-btn:hover { background: #eef5fc; border-color: var(--blue); color: var(--blue); }
+  .back-btn.visible { display: flex; }
+
+  /* ag color helpers */
+  .ag-u8   .hold-color-bar { background: var(--u8-border); }
+  .ag-u10  .hold-color-bar { background: var(--u10-border); }
+  .ag-u12  .hold-color-bar { background: var(--u12-border); }
+  .ag-u14  .hold-color-bar { background: var(--u14-border); }
+  .ag-open .hold-color-bar { background: var(--open-border); }
+
+  .ag-u8   .hold-number-block { background: var(--u8-bg); color: var(--u8-fg); }
+  .ag-u10  .hold-number-block { background: var(--u10-bg); color: var(--u10-fg); }
+  .ag-u12  .hold-number-block { background: var(--u12-bg); color: var(--u12-fg); }
+  .ag-u14  .hold-number-block { background: var(--u14-bg); color: var(--u14-fg); }
+  .ag-open .hold-number-block { background: var(--open-bg); color: var(--open-fg); }
+
+  .ag-u8  .age-pill { background: var(--u8-fg); color: var(--u8-bg); }
+  .ag-u10 .age-pill { background: var(--u10-fg); color: var(--u10-bg); }
+  .ag-u12 .age-pill { background: var(--u12-fg); color: var(--u12-bg); }
+  .ag-u14 .age-pill { background: var(--u14-fg); color: var(--u14-bg); }
+  .ag-open .age-pill { background: var(--open-border); color: #fff; }
+
+  @media (max-width: 480px) {
+    .site-header h1 { font-size: 20px; }
+    .pc-name { font-size: 16px; }
+    .hold-info-top { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <div class="club-name">Taarbæk Tennis Klub</div>
+  <h1>Holdsøgning – Sommertræning 2026</h1>
+  <div class="subtitle">Mandag 27. april – september &nbsp;·&nbsp; Træner: Jacob &nbsp;·&nbsp; Ønsker, ikke endelig placering</div>
+</div>
+
+<div class="search-wrap">
+  <label class="search-label" for="search-input">Søg dit navn</label>
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="F.eks. Lily Foghsgaard…" autocomplete="off" spellcheck="false">
+    <span class="search-icon">⌕</span>
+  </div>
+  <div class="suggestions" id="suggestions"></div>
+</div>
+
+<div class="results" id="results">
+  <div class="state-empty">
+    <div class="big-icon">🎾</div>
+    <h2>Find dit hold</h2>
+    <p>Skriv dit navn i søgefeltet ovenfor.<br>Du ser dit hold, din tid og hvem du træner med.</p>
+  </div>
+</div>
+
+<button class="back-btn" id="back-btn" onclick="goBack()">← Søg igen</button>
+
+<div class="site-footer">
+  Taarbæk Tennis Klub · Sommertræning 2026 · Sidst opdateret 19. april 2026 · Hold sammensat af Jacob
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const holdInfo = {
+  1:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  2:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  3:{day:"Mandag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  4:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  5:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  6:{day:"Mandag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  7:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  8:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  9:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  10:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  11:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  12:{day:"Tirsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  13:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  14:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  15:{day:"Tirsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  16:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  17:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  18:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  19:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  20:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  21:{day:"Onsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  22:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  23:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  24:{day:"Onsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  25:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  26:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  27:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  28:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  29:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},
+  30:{day:"Torsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  31:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  32:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},
+  33:{day:"Torsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  34:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  35:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  36:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  37:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},
+  38:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},
+  39:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},
+  40:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},
+  41:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},
+  42:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},
+};
+
+const schedule = {
+  man:{slots:[
+    {time:"15:00–16:00",holds:[1,2,3]},
+    {time:"16:00–17:00",holds:[4,5,6]},
+    {time:"17:00–18:00",holds:[7,8,9]},
+  ]},
+  tir:{slots:[
+    {time:"15:00–16:00",holds:[10,11,12]},
+    {time:"16:00–17:00",holds:[13,14,15]},
+    {time:"17:00–18:00",holds:[16,17,18]},
+  ]},
+  ons:{slots:[
+    {time:"15:00–16:00",holds:[19,20,21]},
+    {time:"16:00–17:00",holds:[22,23,24]},
+    {time:"17:00–18:00",holds:[25,26,27]},
+  ]},
+  tor:{slots:[
+    {time:"15:00–16:00",holds:[28,29,30]},
+    {time:"16:00–17:00",holds:[31,32,33]},
+    {time:"17:00–18:00",holds:[34,35,36]},
+  ]},
+  fre:{slots:[
+    {time:"15:00–16:00",holds:[37,38,39]},
+    {time:"16:00–17:00",holds:[40,41,42]},
+  ]},
+};
+
+const dayKeyMap = {Mandag:"man",Tirsdag:"tir",Onsdag:"ons",Torsdag:"tor",Fredag:"fre"};
+
+const players = [
+  {navn:"Svend Bjerg Boserup",timer:1,pris:600,holds:[1,2],dw:[]},
+  {navn:"Ro Skov Andersen",timer:1,pris:600,holds:[19,20,37,38,39,40,41,42],dw:[]},
+  {navn:"Wilma Barrit Christensen",timer:1,pris:600,holds:[],dw:[],unplaced:true},
+  {navn:"Valde Bentzen",timer:1,pris:600,holds:[1,2],dw:[]},
+  {navn:"Agnes Hvidsten Daugaard",timer:1,pris:600,holds:[],dw:["man-15:00–16:00","tir-15:00–16:00","ons-15:00–16:00","fre-15:00–16:00"]},
+  {navn:"Caroline Bodholdt",timer:1,pris:600,holds:[],dw:["tir-15:00–16:00","tir-16:00–17:00"]},
+  {navn:"Iben Hviid-Westergaard",timer:1,pris:600,holds:[1,2,10,11],dw:[]},
+  {navn:"Oliver Bangsgaard",timer:1,pris:600,holds:[1,2],dw:[]},
+  {navn:"Elin Falkenberg",timer:1,pris:600,holds:[1,2,3],dw:[]},
+  {navn:"Elisabeth Kjøller-Hansen",timer:1,pris:600,holds:[1,2,3],dw:[]},
+  {navn:"Frederik Bødker",timer:1,pris:600,holds:[4,5],dw:[]},
+  {navn:"Mark Oscar Bondar",timer:1,pris:600,holds:[1,2,19,20],dw:[]},
+  {navn:"Ellinor Maribo-Barming",timer:1,pris:600,holds:[4,5,22,23],dw:[]},
+  {navn:"Lily Foghsgaard",timer:1,pris:600,holds:[7,8,9],dw:[]},
+  {navn:"Kaia Nordang",timer:1,pris:600,holds:[7,8,9],dw:[]},
+  {navn:"Eddie Baun-Søgaard",timer:1,pris:600,holds:[],dw:["man-15:00–16:00","tir-15:00–16:00"]},
+  {navn:"Rita Gundtoft",timer:1,pris:600,holds:[2,3],dw:[]},
+  {navn:"Frida Læssøe Stephensen",timer:1,pris:600,holds:[21],dw:["ons-16:00–17:00"]},
+  {navn:"Betty Falbert",timer:1,pris:600,holds:[19,20,21],dw:[]},
+  {navn:"Stella Rye",timer:1,pris:600,holds:[],dw:[],unplaced:true},
+  {navn:"Ellie Tranberg Sandvik",timer:1,pris:600,holds:[],dw:["ons-15:00–16:00","ons-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"]},
+  {navn:"Herbert Asbæk",timer:1,pris:600,holds:[4,5,6,7,8,9],dw:[]},
+  {navn:"Svend Gundtoft",timer:1,pris:600,holds:[6,7,8,9],dw:[]},
+  {navn:"Marcus Espenhein Berg",timer:1,pris:600,holds:[4,5,6],dw:[]},
+  {navn:"Erik Otto Frikke Holdt",timer:1,pris:600,holds:[4,5,6],dw:[]},
+  {navn:"Sonja Frikke Holdt",timer:1,pris:600,holds:[],dw:["tir-15:00–16:00","tir-16:00–17:00"]},
+  {navn:"Marlowe Bergsøe Morgan",timer:1,pris:600,holds:[],dw:["tir-15:00–16:00","tir-16:00–17:00"]},
+  {navn:"Theodor Nehammer Thorsell",timer:1,pris:600,holds:[10],dw:["man-15:00–16:00"]},
+  {navn:"Caia Emmy Vilfort Thomsen",timer:1,pris:600,holds:[],dw:["tir-15:00–16:00","tir-16:00–17:00"]},
+  {navn:"Margrethe Veel Haahr",timer:1,pris:600,holds:[],dw:["tir-16:00–17:00"]},
+  {navn:"Anker Bjørnshave Madsen",timer:1,pris:600,holds:[1,2,10,11,19,20],dw:[]},
+  {navn:"Viola Bjørnshave Madsen",timer:1,pris:600,holds:[],dw:["tir-15:00–16:00"]},
+  {navn:"Kalle Kolringen",timer:1,pris:600,holds:[],dw:["man-15:00–16:00","man-16:00–17:00"]},
+  {navn:"Felix Kolringen",timer:1,pris:600,holds:[4,5,6],dw:[]},
+  {navn:"Anker Dahl Bentzen",timer:1,pris:600,holds:[6],dw:[]},
+  {navn:"Sophia Søbæk",timer:1,pris:600,holds:[],dw:["ons-16:00–17:00","ons-17:00–18:00"]},
+  {navn:"Kai Bille Ebsen",timer:1,pris:600,holds:[],dw:[],unplaced:true},
+  {navn:"Josefine Haugaard Sørensen",timer:1,pris:600,holds:[],dw:["ons-16:00–17:00"]},
+  {navn:"Selma Marie Ravn Hansen",timer:1,pris:600,holds:[],dw:["ons-16:00–17:00"]},
+  {navn:"Filip Emil Bjerre Ejstrup",timer:1,pris:600,holds:[37,38,39,40,41,42],dw:[]},
+  {navn:"Edith Hviid-Westergaard",timer:1,pris:600,holds:[],dw:["tor-15:00–16:00"]},
+  {navn:"Sally Van Leeuwen",timer:1,pris:600,holds:[],dw:["ons-15:00–16:00","ons-16:00–17:00","ons-17:00–18:00"]},
+  {navn:"Vincent Pambi Deleuran",timer:1,pris:600,holds:[40],dw:[]},
+  {navn:"Anna Kruse Simonsen",timer:1,pris:600,holds:[40,41],dw:[]},
+  {navn:"Viggo Løfberg",timer:1,pris:600,holds:[40,41],dw:[]},
+  {navn:"Frida Falbert",timer:1,pris:600,holds:[40,41],dw:[]},
+  {navn:"Gustav Brønd Ejstrup",timer:1,pris:600,holds:[37,38,39,40,41,42],dw:[]},
+  {navn:"Emmie Frahm",timer:1,pris:600,holds:[],dw:[],unplaced:true},
+  {navn:"Robert Emborg Graabæk",timer:1,pris:600,holds:[15,16,17,18,33,34,35,36],dw:[]},
+  {navn:"Magnus Hvidsten Daugaard",timer:2,pris:900,holds:[],dw:["man-15:00–16:00","tir-15:00–16:00","tor-15:00–16:00"]},
+  {navn:"Julian Mora Peersen",timer:2,pris:900,holds:[],dw:[],unplaced:true},
+  {navn:"Hamilton von der Heide",timer:2,pris:900,holds:[],dw:["man-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"]},
+  {navn:"August Stage",timer:2,pris:900,holds:[10,28],dw:[]},
+  {navn:"Frederik Jul-Rasmussen",timer:2,pris:900,holds:[],dw:["ons-16:00–17:00","fre-16:00–17:00"]},
+  {navn:"Julie Kuur de la Porte",timer:2,pris:900,holds:[24,25],dw:[]},
+  {navn:"Eske Victor Mikkelsen Klewe",timer:2,pris:900,holds:[13,14,15,31,32,33],dw:[]},
+  {navn:"Ella Asta Mørck Gjeraa",timer:2,pris:900,holds:[24,25],dw:[]},
+  {navn:"Isabel Laursen",timer:2,pris:900,holds:[24,25],dw:[]},
+  {navn:"Barbara Buchhave Breiter",timer:2,pris:900,holds:[],dw:["man-15:00–16:00","man-16:00–17:00","ons-15:00–16:00","ons-16:00–17:00","tor-15:00–16:00","tor-16:00–17:00"]},
+  {navn:"Amelia Uldahl",timer:2,pris:900,holds:[2,3,4,21,22,23,30,31,32],dw:[]},
+  {navn:"Matteo Wittendorff Jensen",timer:2,pris:900,holds:[],dw:["ons-15:00–16:00","ons-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"]},
+  {navn:"Carl-Christian Fredslund",timer:2,pris:900,holds:[4,5,7,8,9],dw:[]},
+  {navn:"James Lago Christiansen",timer:2,pris:900,holds:[],dw:[],unplaced:true},
+  {navn:"Carl-Christian Olsen",timer:2,pris:900,holds:[13,14,31,32],dw:[]},
+  {navn:"Vera Edith Ituri Højland",timer:2,pris:900,holds:[10,11,28,29],dw:[]},
+  {navn:"Hamilton Georg Krone Bertelsen",timer:2,pris:900,holds:[10,28],dw:[]},
+  {navn:"Ella Alberte Thyge Urban",timer:3,pris:1100,holds:[6,33,34],dw:[]},
+  {navn:"Noah Elia Bakka Giustiniani",timer:3,pris:1100,holds:[],dw:[],unplaced:true},
+  {navn:"Ray Nicolai Bakka Giustiniani",timer:3,pris:1100,holds:[],dw:[],unplaced:true},
+  {navn:"Fie-Amalie Dyrholm Kristiansen",timer:3,pris:1100,holds:[6,7,8,9,33,34,35,36],dw:[]},
+  {navn:"Fanny Marie Lunn",timer:3,pris:1100,holds:[],dw:["man-15:00–16:00","tir-15:00–16:00","ons-15:00–16:00","fre-15:00–16:00"]},
+  {navn:"Morits Jørgensen",timer:3,pris:1100,holds:[],dw:["tir-15:00–16:00","tir-16:00–17:00","ons-15:00–16:00","ons-16:00–17:00","tor-15:00–16:00","tor-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"]},
+  {navn:"Alberte Kiær Pedersen",timer:3,pris:1100,holds:[],dw:["ons-16:00–17:00","ons-17:00–18:00"]},
+  {navn:"Asger Elias Wolf Kølle",timer:3,pris:1100,holds:[],dw:[],unplaced:true,note:"3 gange om ugen – ingen dag/hold angivet"},
+  {navn:"Storm Jonathan Wolf Kølle",timer:3,pris:1100,holds:[],dw:[],unplaced:true,note:"3 gange om ugen – ingen dag/hold angivet"},
+];
+
+// ── Assignments injected server-side by Apps Script ──────────────────────────
+// ASSIGNMENTS_PLACEHOLDER is replaced by Apps Script with actual data
+const assignments = {"Wilma Barrit Christensen": 42};
+
+// Build hold→players map
+const holdMap = {};
+for(let i=1;i<=42;i++) holdMap[i]=[];
+
+players.forEach(p => {
+  if(p.unplaced) return;
+  if(p.holds.length > 0){
+    p.holds.forEach(h => holdMap[h].push({navn:p.navn, wish:false}));
+  } else {
+    p.dw.forEach(key => {
+      const [dk, slot] = key.split(/-(?=\d)/);
+      const dayData = schedule[dk];
+      if(!dayData) return;
+      const s = dayData.slots.find(s => s.time === slot);
+      if(!s) return;
+      s.holds.forEach(h => holdMap[h].push({navn:p.navn, wish:true}));
+    });
+  }
+});
+
+// Get holds for a player
+function getPlayerHolds(p) {
+  const result = [];
+  if(p.holds.length > 0){
+    p.holds.forEach(h => result.push({nr:h, wish:false}));
+  } else {
+    p.dw.forEach(key => {
+      const [dk, slot] = key.split(/-(?=\d)/);
+      const dayData = schedule[dk];
+      if(!dayData) return;
+      const s = dayData.slots.find(s => s.time === slot);
+      if(!s) return;
+      s.holds.forEach(h => result.push({nr:h, wish:true}));
+    });
+  }
+  // Deduplicate
+  const seen = new Set();
+  return result.filter(r => { if(seen.has(r.nr)) return false; seen.add(r.nr); return true; });
+}
+
+function initials(name) {
+  return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+function timerLabel(t) {
+  return t === 1 ? '1 time om ugen' : t === 2 ? '2 timer om ugen' : '3 timer om ugen';
+}
+
+// ── Search logic ──────────────────────────────────────────────────────────────
+const input = document.getElementById('search-input');
+const suggestionsEl = document.getElementById('suggestions');
+const resultsEl = document.getElementById('results');
+let focusedIdx = -1;
+let filteredPlayers = [];
+
+function normalize(str) {
+  return str.toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .replace(/é/g,'e').replace(/ü/g,'u');
+}
+
+input.addEventListener('input', () => {
+  const q = input.value.trim();
+  focusedIdx = -1;
+  if(q.length < 2){ suggestionsEl.innerHTML=''; suggestionsEl.classList.remove('visible'); return; }
+  const nq = normalize(q);
+  filteredPlayers = players.filter(p => normalize(p.navn).includes(nq));
+  renderSuggestions(filteredPlayers, q);
+});
+
+input.addEventListener('keydown', e => {
+  const items = suggestionsEl.querySelectorAll('.suggestion-item');
+  if(e.key === 'ArrowDown'){ e.preventDefault(); focusedIdx = Math.min(focusedIdx+1, items.length-1); updateFocus(items); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); focusedIdx = Math.max(focusedIdx-1, 0); updateFocus(items); }
+  else if(e.key === 'Enter' && focusedIdx >= 0){ items[focusedIdx].click(); }
+  else if(e.key === 'Escape'){ suggestionsEl.classList.remove('visible'); }
+});
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('.search-wrap')) suggestionsEl.classList.remove('visible');
+});
+
+function updateFocus(items) {
+  items.forEach((item, i) => item.classList.toggle('focused', i === focusedIdx));
+  if(items[focusedIdx]) items[focusedIdx].scrollIntoView({block:'nearest'});
+}
+
+function renderSuggestions(list, q) {
+  if(!list.length){
+    suggestionsEl.innerHTML = `<div class="no-results-drop">Ingen spillere fundet for "${q}"</div>`;
+    suggestionsEl.classList.add('visible');
+    return;
+  }
+  suggestionsEl.innerHTML = list.slice(0,8).map((p,i) => `
+    <div class="suggestion-item" data-idx="${i}" onclick="selectPlayer('${p.navn.replace(/'/g,"\\'")}')">
+      <div class="suggestion-avatar">${initials(p.navn)}</div>
+      <span class="suggestion-name">${highlight(p.navn, q)}</span>
+      <span class="suggestion-meta">${timerLabel(p.timer)} · ${p.pris} kr</span>
+    </div>`).join('');
+  suggestionsEl.classList.add('visible');
+}
+
+function highlight(name, q) {
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return name.replace(re, '<strong>$1</strong>');
+}
+
+function selectPlayer(navn) {
+  const p = players.find(x => x.navn === navn);
+  if(!p) return;
+  input.value = p.navn;
+  suggestionsEl.classList.remove('visible');
+  renderResult(p);
+  document.getElementById('back-btn').classList.add('visible');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function goBack() {
+  input.value = '';
+  input.focus();
+  document.getElementById('back-btn').classList.remove('visible');
+  resultsEl.innerHTML = `
+    <div class="state-empty">
+      <div class="big-icon">🎾</div>
+      <h2>Find dit hold</h2>
+      <p>Skriv dit navn i søgefeltet ovenfor.<br>Du ser dit hold, din tid og hvem du træner med.</p>
+    </div>`;
+}
+
+// ── Result card ───────────────────────────────────────────────────────────────
+function renderResult(p) {
+  // Live assignment from Sheets takes priority over everything
+  const assignedHold = assignments[p.navn] || null;
+
+  // Player has no assignment yet
+  if(!assignedHold){
+    resultsEl.innerHTML = `
+      <div class="player-card">
+        <div class="pc-top">
+          <div class="pc-avatar">${initials(p.navn)}</div>
+          <div>
+            <div class="pc-name">${p.navn}</div>
+            <div class="pc-timer">${timerLabel(p.timer)}</div>
+          </div>
+          <div class="pc-price"><strong>${p.pris} kr</strong>træning/sæson</div>
+        </div>
+      </div>
+      <div class="unplaced-card">
+        <div class="uc-title">⚠ Afventer holdplacering</div>
+        <div class="uc-body">${p.navn} er endnu ikke tildelt et hold.<br><br>${p.note || 'Kontakt Jacob for at få tildelt et hold.'}</div>
+      </div>`;
+    return;
+  }
+
+  // Player has a confirmed assignment — show only that hold
+  const confirmedHolds = [{nr: assignedHold, wish: false}];
+
+  const holdRows = confirmedHolds.map(({nr, wish}) => {
+    const info = holdInfo[nr];
+    const members = (holdMap[nr] || []).filter(m => m.navn !== p.navn);
+    const memberChips = members.length
+      ? members.map(m => `
+          <div class="member-chip" onclick="selectPlayer('${m.navn.replace(/'/g,"\\'")}')">
+            <div class="chip-av">${initials(m.navn)}</div>
+            ${m.navn}${m.wish ? ' <span style="opacity:.5;font-size:10px">(ønske)</span>' : ''}
+          </div>`).join('')
+      : `<div class="empty-group">Ingen andre spillere har ønsket dette hold endnu</div>`;
+
+    return `
+      <div class="hold-row ${info.cl}">
+        <div class="hold-hero">
+          <div class="hold-color-bar"></div>
+          <div class="hold-number-block">
+            <div class="hold-number-label">Hold</div>
+            <div class="hold-number-big">${nr}</div>
+            <span class="age-pill">${info.ag}</span>
+          </div>
+          <div class="hold-details">
+            <div class="hold-day-time">
+              <span class="day-chip">${info.day}</span>
+              <span class="time-chip">${info.slot}</span>
+              ${wish ? '<span class="wish-tag">dag-ønske</span>' : ''}
+            </div>
+          </div>
+        </div>
+        <div class="hold-info">
+          <div class="group-label">Øvrige spillere på dette hold</div>
+          <div class="member-chips">${memberChips}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  resultsEl.innerHTML = `
+    <div class="player-card">
+      <div class="pc-top">
+        <div class="pc-avatar">${initials(p.navn)}</div>
+        <div>
+          <div class="pc-name">${p.navn}</div>
+          <div class="pc-timer">${timerLabel(p.timer)}</div>
+        </div>
+        <div class="pc-price"><strong>${p.pris} kr</strong>træning/sæson</div>
+      </div>
+      <div class="holds-section">${holdRows}</div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:8px">
+      Klik på en holdkammerats navn for at se deres holdoversigt &nbsp;·&nbsp; Kursiv = dag-ønske uden specifikt holdnummer
+    </div>`;
+}
+
+</script>
+</body>
+</html>
