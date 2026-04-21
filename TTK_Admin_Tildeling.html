@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTK Admin – Holdtildeling 2026</title>
+<style>
+:root {
+  --navy:#1B3A5C; --blue:#2E6DA4; --green:#16a34a; --amber:#d97706; --red:#C0392B;
+  --u8-bg:#D6EFFF; --u8-fg:#0A4A7A;
+  --u10-bg:#D5F0E8; --u10-fg:#0A4A2A;
+  --u12-bg:#FFF3D6; --u12-fg:#7A4A0A;
+  --u14-bg:#F0D6FF; --u14-fg:#4A0A7A;
+  --open-bg:#F0F0F0; --open-fg:#444;
+  --text:#1a1a2e; --muted:#6b7280; --border:#d1dde8;
+  --surface:#f4f7fa; --white:#fff;
+  --radius:10px; --shadow:0 2px 10px rgba(27,58,92,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--surface);color:var(--text);min-height:100vh}
+
+/* Header */
+.hdr{background:var(--navy);padding:18px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.hdr h1{color:#fff;font-size:18px;font-weight:600;flex:1}
+.hdr-sub{color:rgba(255,255,255,.5);font-size:11px;margin-top:2px}
+.progress-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.progress-bar-outer{width:180px;height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden}
+.progress-bar-inner{height:100%;background:#4ade80;border-radius:3px;transition:width .3s}
+.progress-text{color:rgba(255,255,255,.7);font-size:11px;font-weight:600}
+.export-btn{background:#4ade80;color:#052e16;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.export-btn:hover{background:#22c55e}
+.export-btn:disabled{background:rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:not-allowed}
+.save-status{font-size:12px;font-weight:600;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);white-space:nowrap;transition:all .3s}
+.save-status.saving{background:rgba(251,191,36,.2);color:#fbbf24}
+.save-status.saved{background:rgba(74,222,128,.2);color:#4ade80}
+.save-status.error{background:rgba(248,113,113,.2);color:#f87171}
+
+/* Warning bar */
+.warn-bar{background:#fef3c7;border-bottom:2px solid #f59e0b;padding:8px 24px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:8px}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:280px 1fr;gap:0;height:calc(100vh - 116px)}
+
+/* Player list sidebar */
+.sidebar{background:var(--white);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-search{padding:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--white);z-index:2}
+.sidebar-search input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:var(--surface)}
+.sidebar-search input:focus{border-color:var(--blue)}
+.filter-row{display:flex;gap:4px;margin-top:8px}
+.filter-chip{flex:1;text-align:center;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .12s}
+.filter-chip.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.player-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f4f8;display:flex;align-items:center;gap:10px;transition:background .1s}
+.player-item:hover{background:#f0f7ff}
+.player-item.active{background:#dbeafe;border-left:3px solid var(--blue)}
+.player-item.assigned{opacity:.7}
+.pi-avatar{width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.pi-avatar.done{background:var(--green)}
+.pi-avatar.unplaced{background:var(--red)}
+.pi-name{font-size:12px;font-weight:500;flex:1;line-height:1.3}
+.pi-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap}
+.pi-badge.assigned{background:#dcfce7;color:#15803d}
+.pi-badge.pending{background:#fef3c7;color:#92400e}
+.pi-badge.unplaced{background:#fee2e2;color:#b91c1c}
+
+/* Main panel */
+.main{overflow-y:auto;padding:20px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--muted)}
+.empty-state .icon{font-size:48px;opacity:.3}
+.empty-state p{font-size:14px;text-align:center}
+
+/* Player detail */
+.detail-header{background:var(--navy);border-radius:var(--radius);padding:18px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.dh-avatar{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.25);flex-shrink:0}
+.dh-name{color:#fff;font-size:17px;font-weight:600}
+.dh-meta{color:rgba(255,255,255,.55);font-size:12px;margin-top:2px}
+.dh-status{margin-left:auto;text-align:right}
+.dh-assigned-label{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px}
+.dh-assigned-val{font-size:13px;font-weight:700;color:#4ade80}
+.dh-assigned-val.none{color:rgba(255,255,255,.35);font-weight:400;font-style:italic}
+
+.section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+
+/* Hold options grid */
+.holds-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.hold-option{
+  border:2px solid var(--border);border-radius:var(--radius);
+  background:var(--white);cursor:pointer;
+  transition:all .15s;overflow:hidden;
+  display:flex;align-items:stretch;
+}
+.hold-option:hover{border-color:var(--blue);box-shadow:var(--shadow)}
+.hold-option.selected{border-color:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+.hold-option.full{opacity:.5;pointer-events:none}
+.hold-opt-color{width:6px;flex-shrink:0}
+.hold-opt-num{width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 8px;border-right:1px solid rgba(0,0,0,.07);font-weight:800;font-size:28px;line-height:1}
+.hold-opt-num span{font-size:9px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.hold-opt-body{flex:1;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.hold-opt-daytime{flex:1}
+.hold-opt-day{font-size:14px;font-weight:700;color:var(--navy)}
+.hold-opt-time{font-size:13px;font-weight:600;color:var(--blue);margin-top:1px}
+.hold-opt-ag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.hold-opt-count{font-size:10px;color:var(--muted);text-align:right;white-space:nowrap}
+.hold-opt-count strong{display:block;font-size:13px;color:var(--text)}
+.selected-tick{width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;display:none;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.hold-option.selected .selected-tick{display:flex}
+
+/* ag colors on hold options */
+.ag-u8  .hold-opt-color{background:var(--u8-fg)} .ag-u8  .hold-opt-num{background:var(--u8-bg);color:var(--u8-fg)} .ag-u8  .hold-opt-ag{background:var(--u8-bg);color:var(--u8-fg)}
+.ag-u10 .hold-opt-color{background:var(--u10-fg)} .ag-u10 .hold-opt-num{background:var(--u10-bg);color:var(--u10-fg)} .ag-u10 .hold-opt-ag{background:var(--u10-bg);color:var(--u10-fg)}
+.ag-u12 .hold-opt-color{background:var(--u12-fg)} .ag-u12 .hold-opt-num{background:var(--u12-bg);color:var(--u12-fg)} .ag-u12 .hold-opt-ag{background:var(--u12-bg);color:var(--u12-fg)}
+.ag-u14 .hold-opt-color{background:var(--u14-fg)} .ag-u14 .hold-opt-num{background:var(--u14-bg);color:var(--u14-fg)} .ag-u14 .hold-opt-ag{background:var(--u14-bg);color:var(--u14-fg)}
+.ag-open .hold-opt-color{background:#888} .ag-open .hold-opt-num{background:var(--open-bg);color:var(--open-fg)} .ag-open .hold-opt-ag{background:var(--open-bg);color:var(--open-fg)}
+
+/* Custom hold input */
+.custom-hold{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px}
+.custom-hold label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:8px}
+.custom-hold-row{display:flex;gap:8px;align-items:center}
+.custom-hold input[type=number]{width:90px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;text-align:center;outline:none;color:var(--navy)}
+.custom-hold input:focus{border-color:var(--blue)}
+.custom-hold-btn{padding:8px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.custom-hold-btn:hover{background:var(--blue)}
+
+/* Unplaced note */
+.unplaced-note{background:#fff5f5;border:1.5px solid #fca5a5;border-left:5px solid var(--red);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+.unplaced-note .un-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px}
+.unplaced-note .un-body{font-size:12px;color:#7f1d1d;line-height:1.6}
+
+/* Nav buttons */
+.nav-row{display:flex;gap:8px;margin-top:8px}
+.nav-btn{flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--white);font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:all .12s}
+.nav-btn:hover{background:#f0f7ff;border-color:var(--blue)}
+.nav-btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.nav-btn.primary:hover{background:var(--blue)}
+
+@media(max-width:600px){
+  .layout{grid-template-columns:1fr;height:auto}
+  .sidebar{max-height:220px}
+}
+
+/* ── Password screen ── */
+#pw-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #1B3A5C;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 0;
+}
+.pw-card {
+  background: #fff; border-radius: 16px;
+  padding: 40px 36px 32px;
+  width: 340px; max-width: 90vw;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  text-align: center;
+}
+.pw-logo {
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: #6b7280; margin-bottom: 8px;
+}
+.pw-title { font-size: 20px; font-weight: 700; color: #1B3A5C; margin-bottom: 4px; }
+.pw-sub { font-size: 13px; color: #9ca3af; margin-bottom: 28px; }
+.pw-label { display: block; font-size: 12px; font-weight: 600; color: #374151; text-align: left; margin-bottom: 6px; }
+.pw-input {
+  width: 100%; padding: 12px 16px; font-size: 16px; letter-spacing: .15em;
+  border: 2px solid #e5e7eb; border-radius: 10px; outline: none;
+  text-align: center; color: #1B3A5C; transition: border-color .15s;
+  margin-bottom: 16px;
+}
+.pw-input:focus { border-color: #2E6DA4; }
+.pw-input.shake { animation: shake .35s ease; border-color: #ef4444; }
+.pw-btn {
+  width: 100%; padding: 13px; background: #1B3A5C; color: #fff;
+  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.pw-btn:hover { background: #2E6DA4; }
+.pw-error {
+  font-size: 12px; color: #ef4444; margin-top: 10px;
+  min-height: 18px; transition: opacity .2s;
+}
+.pw-footer { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 20px; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}
+</style>
+</head>
+<body>
+
+<div id="pw-screen">
+  <div class="pw-card">
+    <div class="pw-logo">Taarbæk Tennis Klub</div>
+    <div class="pw-title">Admin – Holdtildeling</div>
+    <div class="pw-sub">Kun for Jacob · Sommertræning 2026</div>
+    <label class="pw-label" for="pw-field">Password</label>
+    <input type="password" id="pw-field" class="pw-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') checkPw()" autocomplete="current-password">
+    <button class="pw-btn" onclick="checkPw()">Log ind</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+  <div class="pw-footer">TTK Admin · 2026</div>
+</div>
+
+<div id="app-content" style="display:none">
+
+<div class="hdr">
+  <div>
+    <h1>TTK Holdtildeling – Jacob's Adminværktøj</h1>
+    <div class="hdr-sub">Sommertræning 2026 · Klik en spiller → vælg hold → gemmes automatisk i Google Sheets</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-text" id="prog-text">0 / 75 tildelt</div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="save-status" id="save-status">Forbinder til Google Sheets…</div>
+  <button class="export-btn" onclick="exportList()" style="margin-left:8px">↓ Eksporter liste</button>
+</div>
+
+<div class="warn-bar">⚠ Jacob's adminværktøj · Tildelinger gemmes automatisk i Google Sheets · Søgesiden opdateres live – ingen re-upload nødvendig</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-search">
+      <input type="text" id="sidebar-search" placeholder="Søg spiller…" oninput="filterSidebar()">
+      <div class="filter-row">
+        <div class="filter-chip active" onclick="setSideFilter('all',this)">Alle</div>
+        <div class="filter-chip" onclick="setSideFilter('pending',this)">Mangler</div>
+        <div class="filter-chip" onclick="setSideFilter('done',this)">Tildelt</div>
+      </div>
+    </div>
+    <div id="player-list"></div>
+  </div>
+
+  <!-- Main panel -->
+  <div class="main" id="main-panel">
+    <div class="empty-state">
+      <div class="icon">👈</div>
+      <p>Vælg en spiller fra listen<br>for at tildele dem et hold</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const holdInfo = {
+  1:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},2:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},3:{day:"Mandag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  4:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},5:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},6:{day:"Mandag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  7:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},8:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},9:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  10:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},11:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},12:{day:"Tirsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  13:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},14:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},15:{day:"Tirsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  16:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},17:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},18:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  19:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},20:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},21:{day:"Onsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  22:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},23:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},24:{day:"Onsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  25:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},26:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},27:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  28:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},29:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},30:{day:"Torsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  31:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},32:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},33:{day:"Torsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  34:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},35:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},36:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  37:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},38:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},39:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},
+  40:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},41:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},42:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},
+};
+
+const players = [
+  {n:"Svend Bjerg Boserup",t:1,p:600,h:[1,2],dw:[],a:[]},
+  {n:"Ro Skov Andersen",t:1,p:600,h:[19,20,37,38,39,40,41,42],dw:[],a:[]},
+  {n:"Wilma Barrit Christensen",t:1,p:600,h:[],dw:[],u:true,a:[]},
+  {n:"Valde Bentzen",t:1,p:600,h:[1,2],dw:[],a:[]},
+  {n:"Agnes Hvidsten Daugaard",t:1,p:600,h:[],dw:["man-15:00–16:00","tir-15:00–16:00","ons-15:00–16:00","fre-15:00–16:00"],a:[]},
+  {n:"Caroline Bodholdt",t:1,p:600,h:[],dw:["tir-15:00–16:00","tir-16:00–17:00"],a:[]},
+  {n:"Iben Hviid-Westergaard",t:1,p:600,h:[1,2,10,11],dw:[],a:[]},
+  {n:"Oliver Bangsgaard",t:1,p:600,h:[1,2],dw:[],a:[]},
+  {n:"Elin Falkenberg",t:1,p:600,h:[1,2,3],dw:[],a:[]},
+  {n:"Elisabeth Kjøller-Hansen",t:1,p:600,h:[1,2,3],dw:[],a:[]},
+  {n:"Frederik Bødker",t:1,p:600,h:[4,5],dw:[],a:[]},
+  {n:"Mark Oscar Bondar",t:1,p:600,h:[1,2,19,20],dw:[],a:[]},
+  {n:"Ellinor Maribo-Barming",t:1,p:600,h:[4,5,22,23],dw:[],a:[]},
+  {n:"Lily Foghsgaard",t:1,p:600,h:[7,8,9],dw:[],a:[]},
+  {n:"Kaia Nordang",t:1,p:600,h:[7,8,9],dw:[],a:[]},
+  {n:"Eddie Baun-Søgaard",t:1,p:600,h:[],dw:["man-15:00–16:00","tir-15:00–16:00"],a:[]},
+  {n:"Rita Gundtoft",t:1,p:600,h:[2,3],dw:[],a:[]},
+  {n:"Frida Læssøe Stephensen",t:1,p:600,h:[21],dw:["ons-16:00–17:00"],a:[]},
+  {n:"Betty Falbert",t:1,p:600,h:[19,20,21],dw:[],a:[]},
+  {n:"Stella Rye",t:1,p:600,h:[],dw:[],u:true,a:[]},
+  {n:"Ellie Tranberg Sandvik",t:1,p:600,h:[],dw:["ons-15:00–16:00","ons-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"],a:[]},
+  {n:"Herbert Asbæk",t:1,p:600,h:[4,5,6,7,8,9],dw:[],a:[]},
+  {n:"Svend Gundtoft",t:1,p:600,h:[6,7,8,9],dw:[],a:[]},
+  {n:"Marcus Espenhein Berg",t:1,p:600,h:[4,5,6],dw:[],a:[]},
+  {n:"Erik Otto Frikke Holdt",t:1,p:600,h:[4,5,6],dw:[],a:[]},
+  {n:"Sonja Frikke Holdt",t:1,p:600,h:[],dw:["tir-15:00–16:00","tir-16:00–17:00"],a:[]},
+  {n:"Marlowe Bergsøe Morgan",t:1,p:600,h:[],dw:["tir-15:00–16:00","tir-16:00–17:00"],a:[]},
+  {n:"Theodor Nehammer Thorsell",t:1,p:600,h:[10],dw:["man-15:00–16:00"],a:[]},
+  {n:"Caia Emmy Vilfort Thomsen",t:1,p:600,h:[],dw:["tir-15:00–16:00","tir-16:00–17:00"],a:[]},
+  {n:"Margrethe Veel Haahr",t:1,p:600,h:[],dw:["tir-16:00–17:00"],a:[]},
+  {n:"Anker Bjørnshave Madsen",t:1,p:600,h:[1,2,10,11,19,20],dw:[],a:[]},
+  {n:"Viola Bjørnshave Madsen",t:1,p:600,h:[],dw:["tir-15:00–16:00"],a:[]},
+  {n:"Kalle Kolringen",t:1,p:600,h:[],dw:["man-15:00–16:00","man-16:00–17:00"],a:[]},
+  {n:"Felix Kolringen",t:1,p:600,h:[4,5,6],dw:[],a:[]},
+  {n:"Anker Dahl Bentzen",t:1,p:600,h:[6],dw:[],a:[]},
+  {n:"Sophia Søbæk",t:1,p:600,h:[],dw:["ons-16:00–17:00","ons-17:00–18:00"],a:[]},
+  {n:"Kai Bille Ebsen",t:1,p:600,h:[],dw:[],u:true,a:[]},
+  {n:"Josefine Haugaard Sørensen",t:1,p:600,h:[],dw:["ons-16:00–17:00"],a:[]},
+  {n:"Selma Marie Ravn Hansen",t:1,p:600,h:[],dw:["ons-16:00–17:00"],a:[]},
+  {n:"Filip Emil Bjerre Ejstrup",t:1,p:600,h:[37,38,39,40,41,42],dw:[],a:[]},
+  {n:"Edith Hviid-Westergaard",t:1,p:600,h:[],dw:["tor-15:00–16:00"],a:[]},
+  {n:"Sally Van Leeuwen",t:1,p:600,h:[],dw:["ons-15:00–16:00","ons-16:00–17:00","ons-17:00–18:00"],a:[]},
+  {n:"Vincent Pambi Deleuran",t:1,p:600,h:[40],dw:[],a:[]},
+  {n:"Anna Kruse Simonsen",t:1,p:600,h:[40,41],dw:[],a:[]},
+  {n:"Viggo Løfberg",t:1,p:600,h:[40,41],dw:[],a:[]},
+  {n:"Frida Falbert",t:1,p:600,h:[40,41],dw:[],a:[]},
+  {n:"Gustav Brønd Ejstrup",t:1,p:600,h:[37,38,39,40,41,42],dw:[],a:[]},
+  {n:"Emmie Frahm",t:1,p:600,h:[],dw:[],u:true,a:[]},
+  {n:"Robert Emborg Graabæk",t:1,p:600,h:[15,16,17,18,33,34,35,36],dw:[],a:[]},
+  {n:"Magnus Hvidsten Daugaard",t:2,p:900,h:[],dw:["man-15:00–16:00","tir-15:00–16:00","tor-15:00–16:00"],a:[]},
+  {n:"Julian Mora Peersen",t:2,p:900,h:[],dw:[],u:true,a:[]},
+  {n:"Hamilton von der Heide",t:2,p:900,h:[],dw:["man-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"],a:[]},
+  {n:"August Stage",t:2,p:900,h:[10,28],dw:[],a:[]},
+  {n:"Frederik Jul-Rasmussen",t:2,p:900,h:[],dw:["ons-16:00–17:00","fre-16:00–17:00"],a:[]},
+  {n:"Julie Kuur de la Porte",t:2,p:900,h:[24,25],dw:[],a:[]},
+  {n:"Eske Victor Mikkelsen Klewe",t:2,p:900,h:[13,14,15,31,32,33],dw:[],a:[]},
+  {n:"Ella Asta Mørck Gjeraa",t:2,p:900,h:[24,25],dw:[],a:[]},
+  {n:"Isabel Laursen",t:2,p:900,h:[24,25],dw:[],a:[]},
+  {n:"Barbara Buchhave Breiter",t:2,p:900,h:[],dw:["man-15:00–16:00","man-16:00–17:00","ons-15:00–16:00","ons-16:00–17:00","tor-15:00–16:00","tor-16:00–17:00"],a:[]},
+  {n:"Amelia Uldahl",t:2,p:900,h:[2,3,4,21,22,23,30,31,32],dw:[],a:[]},
+  {n:"Matteo Wittendorff Jensen",t:2,p:900,h:[],dw:["ons-15:00–16:00","ons-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"],a:[]},
+  {n:"Carl-Christian Fredslund",t:2,p:900,h:[4,5,7,8,9],dw:[],a:[]},
+  {n:"James Lago Christiansen",t:2,p:900,h:[],dw:[],u:true,a:[]},
+  {n:"Carl-Christian Olsen",t:2,p:900,h:[13,14,31,32],dw:[],a:[]},
+  {n:"Vera Edith Ituri Højland",t:2,p:900,h:[10,11,28,29],dw:[],a:[]},
+  {n:"Hamilton Georg Krone Bertelsen",t:2,p:900,h:[10,28],dw:[],a:[]},
+  {n:"Ella Alberte Thyge Urban",t:3,p:1100,h:[6,33,34],dw:[],a:[]},
+  {n:"Noah Elia Bakka Giustiniani",t:3,p:1100,h:[],dw:[],u:true,a:[]},
+  {n:"Ray Nicolai Bakka Giustiniani",t:3,p:1100,h:[],dw:[],u:true,a:[]},
+  {n:"Fie-Amalie Dyrholm Kristiansen",t:3,p:1100,h:[6,7,8,9,33,34,35,36],dw:[],a:[]},
+  {n:"Fanny Marie Lunn",t:3,p:1100,h:[],dw:["man-15:00–16:00","tir-15:00–16:00","ons-15:00–16:00","fre-15:00–16:00"],a:[]},
+  {n:"Morits Jørgensen",t:3,p:1100,h:[],dw:["tir-15:00–16:00","tir-16:00–17:00","ons-15:00–16:00","ons-16:00–17:00","tor-15:00–16:00","tor-16:00–17:00","fre-15:00–16:00","fre-16:00–17:00"],a:[]},
+  {n:"Alberte Kiær Pedersen",t:3,p:1100,h:[],dw:["ons-16:00–17:00","ons-17:00–18:00"],a:[]},
+  {n:"Asger Elias Wolf Kølle",t:3,p:1100,h:[],dw:[],u:true,note:"3 gange om ugen",a:[]},
+  {n:"Storm Jonathan Wolf Kølle",t:3,p:1100,h:[],dw:[],u:true,note:"3 gange om ugen",a:[]},
+];
+
+const sched = {
+  man:{slots:[{t:"15:00–16:00",h:[1,2,3]},{t:"16:00–17:00",h:[4,5,6]},{t:"17:00–18:00",h:[7,8,9]}]},
+  tir:{slots:[{t:"15:00–16:00",h:[10,11,12]},{t:"16:00–17:00",h:[13,14,15]},{t:"17:00–18:00",h:[16,17,18]}]},
+  ons:{slots:[{t:"15:00–16:00",h:[19,20,21]},{t:"16:00–17:00",h:[22,23,24]},{t:"17:00–18:00",h:[25,26,27]}]},
+  tor:{slots:[{t:"15:00–16:00",h:[28,29,30]},{t:"16:00–17:00",h:[31,32,33]},{t:"17:00–18:00",h:[34,35,36]}]},
+  fre:{slots:[{t:"15:00–16:00",h:[37,38,39]},{t:"16:00–17:00",h:[40,41,42]}]},
+};
+
+let currentIdx = null;
+let sideFilter = 'all';
+
+function initials(n){ return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function timerLabel(t){ return t===1?'1 time/uge':t===2?'2 timer/uge':'3 timer/uge'; }
+
+// Resolve player's possible holds from wishes
+function getWishHolds(p) {
+  if(p.h && p.h.length > 0) return p.h;
+  const res = [];
+  (p.dw||[]).forEach(key => {
+    const [dk, slot] = key.split(/-(?=\d)/);
+    const d = sched[dk]; if(!d) return;
+    const s = d.slots.find(s=>s.t===slot); if(!s) return;
+    s.h.forEach(h=>{ if(!res.includes(h)) res.push(h); });
+  });
+  return res;
+}
+
+// Count assigned players per hold
+function holdCounts() {
+  const c = {};
+  for(let i=1;i<=42;i++) c[i]=0;
+  players.forEach(p=>{ if(p.a && p.a.length) p.a.forEach(h=>{ c[h]=(c[h]||0)+1; }); });
+  return c;
+}
+
+function updateProgress() {
+  const total = players.length;
+  const done = players.filter(p=>p.a && p.a.length >= p.t).length;
+  const partial = players.filter(p=>p.a && p.a.length > 0 && p.a.length < p.t).length;
+  document.getElementById('prog-text').textContent = `${done} / ${total} færdige · ${partial} delvist`;
+  document.getElementById('prog-bar').style.width = `${Math.round(done/total*100)}%`;
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const q = (document.getElementById('sidebar-search').value||'').toLowerCase();
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  players.forEach((p, i) => {
+    if(sideFilter==='pending' && (p.a!==null || p.u)) return;
+    if(sideFilter==='done' && p.a===null) return;
+    if(q && !p.n.toLowerCase().includes(q)) return;
+
+    const div = document.createElement('div');
+    div.className = 'player-item' + (i===currentIdx?' active':'') + ((p.a && p.a.length>0)?' assigned':'');
+    const status = p.u ? 'unplaced' : (p.a && p.a.length >= p.t) ? 'assigned' : (p.a && p.a.length > 0) ? 'pending' : 'pending';
+    const badgeText = p.u ? 'Ingen ønsker' : (p.a && p.a.length > 0) ? `Hold ${p.a.join(', ')}` : 'Ikke tildelt';
+    div.innerHTML = `
+      <div class="pi-avatar ${(p.a&&p.a.length>=p.t)?'done':p.u?'unplaced':''}">${initials(p.n)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="pi-name">${p.n}</div>
+        <div style="margin-top:3px"><span class="pi-badge ${status}">${badgeText}</span></div>
+      </div>`;
+    div.onclick = () => selectPlayer(i);
+    list.appendChild(div);
+  });
+}
+
+function filterSidebar() { renderSidebar(); }
+function setSideFilter(v, btn) {
+  sideFilter = v;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderSidebar();
+}
+
+// ── Main panel ───────────────────────────────────────────────────────────────
+function selectPlayer(idx) {
+  currentIdx = idx;
+  renderSidebar();
+  renderMain();
+}
+
+function renderMain() {
+  const p = players[currentIdx];
+  const wishHolds = getWishHolds(p);
+  const counts = holdCounts();
+  const main = document.getElementById('main-panel');
+
+  const assignedStr = (p.a && p.a.length > 0)
+    ? p.a.map(h => `Hold ${h} · ${holdInfo[h].day} · ${holdInfo[h].slot}`).join(' + ')
+    : null;
+
+  let html = `
+    <div class="detail-header">
+      <div class="dh-avatar">${initials(p.n)}</div>
+      <div>
+        <div class="dh-name">${p.n}</div>
+        <div class="dh-meta">${timerLabel(p.t)} · ${p.p} kr/sæson · Skal have ${p.t} hold</div>
+      </div>
+      <div class="dh-status">
+        <div class="dh-assigned-label">Tildelt hold</div>
+        <div class="dh-assigned-val ${assignedStr?'':'none'}">${assignedStr || 'Ikke tildelt endnu'}</div>
+      </div>
+    </div>`;
+
+  if(p.u) {
+    html += `<div class="unplaced-note">
+      <div class="un-title">⚠ Ingen holdønsker registreret</div>
+      <div class="un-body">${p.n} har ikke angivet nogen dag eller holdpræference. ${p.note||''}<br><br>Brug feltet nedenfor til at tildele et hold manuelt.</div>
+    </div>`;
+  }
+
+  if(wishHolds.length > 0) {
+    html += `<div class="section-title">Spillerens ønskede hold</div>
+    <div class="holds-grid">`;
+    wishHolds.forEach(nr => {
+      const info = holdInfo[nr];
+      const cnt = counts[nr];
+      const isSelected = p.a && p.a.includes(nr);
+          const selectedCount = p.a ? p.a.length : 0;
+      html += `
+        <div class="hold-option ${info.cl} ${isSelected?'selected':''} ${cnt>=6&&!isSelected?'full':''}" onclick="assignHold(${nr})">
+          <div class="hold-opt-color"></div>
+          <div class="hold-opt-num"><span>Hold</span>${nr}</div>
+          <div class="hold-opt-body">
+            <div class="hold-opt-daytime">
+              <div class="hold-opt-day">${info.day}</div>
+              <div class="hold-opt-time">${info.slot}</div>
+            </div>
+            <span class="hold-opt-ag">${info.ag}</span>
+            <div class="hold-opt-count"><strong>${cnt}/6</strong>spillere</div>
+          </div>
+          <div class="selected-tick">✓</div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="custom-hold">
+    <label>Tildel et andet hold manuelt (hold 1–42)</label>
+    <div class="custom-hold-row">
+      <input type="number" id="custom-hold-input" min="1" max="42" placeholder="nr.">
+      <button class="custom-hold-btn" onclick="assignCustom()">Tildel</button>
+      ${(p.a && p.a.length > 0) ? `<button class="custom-hold-btn" style="background:#fee2e2;color:#b91c1c;margin-left:auto" onclick="clearAssignment()">Fjern tildeling</button>` : ''}
+    </div>
+  </div>`;
+
+  // Nav buttons
+  const hasPrev = currentIdx > 0;
+  const hasNext = currentIdx < players.length - 1;
+  html += `<div class="nav-row">
+    <button class="nav-btn" onclick="selectPlayer(${currentIdx-1})" ${hasPrev?'':'disabled'}>← Forrige</button>
+    <button class="nav-btn primary" onclick="selectPlayer(${currentIdx+1})" ${hasNext?'':'disabled'}>Næste →</button>
+  </div>`;
+
+  main.innerHTML = html;
+}
+
+function assignHold(nr) {
+  const p = players[currentIdx];
+  const max = p.t; // max holds = timer per week
+  const idx = p.a.indexOf(nr);
+  if(idx >= 0) {
+    // Already selected — remove it
+    p.a.splice(idx, 1);
+    saveToSheet(p.n, p.a);
+  } else if(p.a.length < max) {
+    // Add it
+    p.a.push(nr);
+    saveToSheet(p.n, p.a);
+  } else {
+    // Already at max — replace oldest
+    p.a.shift();
+    p.a.push(nr);
+    saveToSheet(p.n, p.a);
+  }
+  updateProgress();
+  renderSidebar();
+  renderMain();
+}
+
+function assignCustom() {
+  const val = parseInt(document.getElementById('custom-hold-input').value);
+  if(!val || val < 1 || val > 42) { alert('Angiv et holdnummer mellem 1 og 42'); return; }
+  assignHold(val);
+}
+
+function clearAssignment() {
+  players[currentIdx].a = [];
+  updateProgress();
+  renderSidebar();
+  renderMain();
+  saveToSheet(players[currentIdx].n, null);
+}
+
+// ── Google Sheets sync ────────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzB6UkXAEJ7qB-8tD2zLKv0kZF21utUwFLFLCNj95zN4oUVQw34DFa9Oc4tkFexEb1yfQ/exec';
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('save-status');
+  el.textContent = msg;
+  el.className = 'save-status ' + (cls||'');
+}
+
+async function saveToSheet(navn, hold) {
+  if(!SCRIPT_URL || SCRIPT_URL.includes('PASTE')) {
+    setStatus('⚠ Indsæt Script URL først', 'error');
+    return;
+  }
+  setStatus('Gemmer…', 'saving');
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ navn, hold }),
+    });
+    setStatus('✓ Gemt', 'saved');
+    setTimeout(() => setStatus(`${players.filter(p=>p.a).length} / ${players.length} gemt`, 'saved'), 1500);
+  } catch(e) {
+    setStatus('Fejl – tjek internet', 'error');
+  }
+}
+
+async function loadFromSheet() {
+  if(!SCRIPT_URL || SCRIPT_URL.includes('PASTE')) {
+    setStatus('⚠ Indsæt Script URL', 'error');
+    return;
+  }
+  setStatus('Henter data…', 'saving');
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if(data.ok && data.assignments) {
+      let loaded = 0;
+      players.forEach(p => {
+        if(data.assignments[p.n] !== undefined) {
+          const val = data.assignments[p.n];
+          if(Array.isArray(val)) {
+            p.a = val.map(Number).filter(n => n > 0);
+          } else if(typeof val === 'string' && val.includes(',')) {
+            p.a = val.split(',').map(Number).filter(n => n > 0);
+          } else if(val) {
+            p.a = [Number(val)];
+          } else {
+            p.a = [];
+          }
+          if(p.a.length > 0) loaded++;
+        }
+      });
+      updateProgress();
+      renderSidebar();
+      if(currentIdx !== null) renderMain();
+      setStatus(`✓ ${loaded} tildelinger hentet`, 'saved');
+      setTimeout(() => setStatus(`${players.filter(p=>p.a).length} / ${players.length} gemt`, 'saved'), 2000);
+    }
+  } catch(e) {
+    setStatus('Kunne ikke hente data', 'error');
+  }
+}
+
+// Unused legacy export kept for reference
+function exportFile() {
+  // Build the assignments map: playerName → holdNumber
+  const assignments = {};
+  players.forEach(p => { if(p.a) assignments[p.n] = p.a; });
+
+  // Inject assignments into the public search file template
+  const assignJSON = JSON.stringify(assignments, null, 2);
+
+  const html = buildPublicFile(assignJSON);
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TTK_Holdsoegning_2026_FINAL.html';
+  a.click();
+}
+
+function buildPublicFile(assignJSON) {
+  // This embeds the final assignments into the public-facing search page
+  return `<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taarbæk Tennis Klub – Holdsøgning 2026</title>
+<style>
+:root{--navy:#1B3A5C;--blue:#2E6DA4;--u8-bg:#D6EFFF;--u8-fg:#0A4A7A;--u10-bg:#D5F0E8;--u10-fg:#0A4A2A;--u12-bg:#FFF3D6;--u12-fg:#7A4A0A;--u14-bg:#F0D6FF;--u14-fg:#4A0A7A;--open-bg:#F0F0F0;--open-fg:#444;--red:#C0392B;--green:#16a34a;--text:#1a1a2e;--muted:#6b7280;--border:#d1dde8;--surface:#f8fafc;--white:#fff;--radius:12px;--shadow:0 2px 12px rgba(27,58,92,.10);--shadow-lg:0 8px 32px rgba(27,58,92,.14);}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#eef3f8;color:var(--text);min-height:100vh}
+.site-header{background:var(--navy);padding:28px 24px 24px;text-align:center}
+.site-header .club-name{color:rgba(255,255,255,.6);font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.site-header h1{color:#fff;font-size:24px;font-weight:600;margin-bottom:6px}
+.site-header .subtitle{color:rgba(255,255,255,.55);font-size:13px}
+.search-wrap{max-width:560px;margin:0 auto;padding:28px 20px 0}
+.search-label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px}
+.search-box{position:relative}
+.search-box input{width:100%;padding:14px 48px 14px 18px;font-size:17px;border:2px solid var(--border);border-radius:var(--radius);background:var(--white);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;box-shadow:var(--shadow)}
+.search-box input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,109,164,.15)}
+.search-box input::placeholder{color:#aab4be}
+.search-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#aab4be;font-size:20px;pointer-events:none}
+.suggestions{background:var(--white);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);box-shadow:var(--shadow-lg);max-height:260px;overflow-y:auto;display:none;position:relative;z-index:10}
+.suggestions.visible{display:block}
+.suggestion-item{padding:12px 18px;cursor:pointer;border-bottom:1px solid #f0f4f8;display:flex;align-items:center;gap:10px;transition:background .1s}
+.suggestion-item:hover,.suggestion-item.focused{background:#eef5fc}
+.suggestion-name{font-size:15px;font-weight:500}
+.suggestion-meta{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.suggestion-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.no-results-drop{padding:16px 18px;color:var(--muted);font-size:14px;text-align:center}
+.results{max-width:680px;margin:20px auto 40px;padding:0 20px}
+.player-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden;margin-bottom:20px}
+.pc-top{background:var(--navy);padding:18px 22px;display:flex;align-items:center;gap:14px}
+.pc-avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,.25)}
+.pc-name{color:#fff;font-size:18px;font-weight:600}
+.pc-timer{color:rgba(255,255,255,.6);font-size:13px;margin-top:2px}
+.pc-price{margin-left:auto;text-align:right;color:rgba(255,255,255,.5);font-size:11px}
+.pc-price strong{display:block;color:#fff;font-size:16px}
+.holds-section{padding:0}
+.hold-row{border-bottom:1px solid var(--border);overflow:hidden}
+.hold-row:last-child{border-bottom:none}
+.hold-hero{display:flex;align-items:stretch;min-height:90px}
+.hold-color-bar{width:8px;flex-shrink:0}
+.hold-number-block{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 20px;min-width:110px;border-right:1px solid rgba(0,0,0,.08)}
+.hold-number-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:4px}
+.hold-number-big{font-size:40px;font-weight:800;line-height:1}
+.age-pill{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;margin-top:6px}
+.confirmed-banner{background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:#15803d;display:inline-flex;align-items:center;gap:4px;margin-top:6px}
+.hold-details{flex:1;padding:14px 18px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.hold-day-time{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day-chip{font-size:15px;font-weight:700;color:var(--navy)}
+.time-chip{font-size:14px;font-weight:600;background:var(--navy);color:#fff;padding:4px 12px;border-radius:20px}
+.hold-info{flex:1;padding:0 18px 14px}
+.group-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.member-chips{display:flex;flex-wrap:wrap;gap:6px}
+.member-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 6px;font-size:12px;cursor:pointer;transition:background .1s}
+.member-chip:hover{background:#dbeafe;border-color:#93c5fd}
+.chip-av{width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+.empty-group{font-size:12px;color:var(--muted);font-style:italic}
+.state-empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.state-empty .big-icon{font-size:48px;margin-bottom:16px;opacity:.4}
+.state-empty h2{font-size:18px;color:var(--text);margin-bottom:8px;font-weight:500}
+.state-empty p{font-size:14px;line-height:1.6}
+.site-footer{text-align:center;padding:20px;font-size:11px;color:#94a3b8;border-top:1px solid var(--border);margin-top:20px}
+.unplaced-card{background:#fff5f5;border:1.5px solid #f5c6c6;border-left:5px solid var(--red);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+.unplaced-card .uc-title{font-size:15px;font-weight:600;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.unplaced-card .uc-body{font-size:13px;color:#7f1d1d;line-height:1.6}
+.ag-u8 .hold-color-bar{background:#0A4A7A}.ag-u8 .hold-number-block{background:var(--u8-bg);color:var(--u8-fg)}.ag-u8 .age-pill{background:#0A4A7A;color:#D6EFFF}
+.ag-u10 .hold-color-bar{background:#0A4A2A}.ag-u10 .hold-number-block{background:var(--u10-bg);color:var(--u10-fg)}.ag-u10 .age-pill{background:#0A4A2A;color:#D5F0E8}
+.ag-u12 .hold-color-bar{background:#7A4A0A}.ag-u12 .hold-number-block{background:var(--u12-bg);color:var(--u12-fg)}.ag-u12 .age-pill{background:#7A4A0A;color:#FFF3D6}
+.ag-u14 .hold-color-bar{background:#4A0A7A}.ag-u14 .hold-number-block{background:var(--u14-bg);color:var(--u14-fg)}.ag-u14 .age-pill{background:#4A0A7A;color:#F0D6FF}
+.ag-open .hold-color-bar{background:#888}.ag-open .hold-number-block{background:var(--open-bg);color:var(--open-fg)}.ag-open .age-pill{background:#888;color:#fff}
+
+/* ── Password screen ── */
+#pw-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #1B3A5C;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 0;
+}
+.pw-card {
+  background: #fff; border-radius: 16px;
+  padding: 40px 36px 32px;
+  width: 340px; max-width: 90vw;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  text-align: center;
+}
+.pw-logo {
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: #6b7280; margin-bottom: 8px;
+}
+.pw-title { font-size: 20px; font-weight: 700; color: #1B3A5C; margin-bottom: 4px; }
+.pw-sub { font-size: 13px; color: #9ca3af; margin-bottom: 28px; }
+.pw-label { display: block; font-size: 12px; font-weight: 600; color: #374151; text-align: left; margin-bottom: 6px; }
+.pw-input {
+  width: 100%; padding: 12px 16px; font-size: 16px; letter-spacing: .15em;
+  border: 2px solid #e5e7eb; border-radius: 10px; outline: none;
+  text-align: center; color: #1B3A5C; transition: border-color .15s;
+  margin-bottom: 16px;
+}
+.pw-input:focus { border-color: #2E6DA4; }
+.pw-input.shake { animation: shake .35s ease; border-color: #ef4444; }
+.pw-btn {
+  width: 100%; padding: 13px; background: #1B3A5C; color: #fff;
+  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.pw-btn:hover { background: #2E6DA4; }
+.pw-error {
+  font-size: 12px; color: #ef4444; margin-top: 10px;
+  min-height: 18px; transition: opacity .2s;
+}
+.pw-footer { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 20px; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}
+</style>
+</head>
+<body>
+<div class="site-header">
+  <div class="club-name">Taarbæk Tennis Klub</div>
+  <h1>Holdsøgning – Sommertræning 2026</h1>
+  <div class="subtitle">Mandag 27. april – september · Træner: Jacob · Endelige holdplaceringer</div>
+</div>
+<div class="search-wrap">
+  <label class="search-label" for="search-input">Søg dit navn</label>
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="F.eks. Lily Foghsgaard…" autocomplete="off" spellcheck="false">
+    <span class="search-icon">⌕</span>
+  </div>
+  <div class="suggestions" id="suggestions"></div>
+</div>
+<div class="results" id="results">
+  <div class="state-empty">
+    <div class="big-icon">🎾</div>
+    <h2>Find dit hold</h2>
+    <p>Skriv dit navn i søgefeltet ovenfor.<br>Du ser dit hold, din tid og hvem du træner med.</p>
+  </div>
+</div>
+<div class="site-footer">Taarbæk Tennis Klub · Sommertræning 2026 · Hold sammensat af Jacob</div>
+<script>
+const holdInfo={1:{day:"Mandag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},2:{day:"Mandag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},3:{day:"Mandag",slot:"15:00\u201316:00",ag:"U10/U12",cl:"ag-u10"},4:{day:"Mandag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},5:{day:"Mandag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},6:{day:"Mandag",slot:"16:00\u201317:00",ag:"U14/Ungsenior",cl:"ag-u14"},7:{day:"Mandag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},8:{day:"Mandag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},9:{day:"Mandag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},10:{day:"Tirsdag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},11:{day:"Tirsdag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},12:{day:"Tirsdag",slot:"15:00\u201316:00",ag:"U10/U12",cl:"ag-u10"},13:{day:"Tirsdag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},14:{day:"Tirsdag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},15:{day:"Tirsdag",slot:"16:00\u201317:00",ag:"U14/Ungsenior",cl:"ag-u14"},16:{day:"Tirsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},17:{day:"Tirsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},18:{day:"Tirsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},19:{day:"Onsdag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},20:{day:"Onsdag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},21:{day:"Onsdag",slot:"15:00\u201316:00",ag:"U10/U12",cl:"ag-u10"},22:{day:"Onsdag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},23:{day:"Onsdag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},24:{day:"Onsdag",slot:"16:00\u201317:00",ag:"U14/Ungsenior",cl:"ag-u14"},25:{day:"Onsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},26:{day:"Onsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},27:{day:"Onsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},28:{day:"Torsdag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},29:{day:"Torsdag",slot:"15:00\u201316:00",ag:"U8/U10",cl:"ag-u8"},30:{day:"Torsdag",slot:"15:00\u201316:00",ag:"U10/U12",cl:"ag-u10"},31:{day:"Torsdag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},32:{day:"Torsdag",slot:"16:00\u201317:00",ag:"U12/U14",cl:"ag-u12"},33:{day:"Torsdag",slot:"16:00\u201317:00",ag:"U14/Ungsenior",cl:"ag-u14"},34:{day:"Torsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},35:{day:"Torsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},36:{day:"Torsdag",slot:"17:00\u201318:00",ag:"U14/Ungsenior",cl:"ag-u14"},37:{day:"Fredag",slot:"15:00\u201316:00",ag:"Open",cl:"ag-open"},38:{day:"Fredag",slot:"15:00\u201316:00",ag:"Open",cl:"ag-open"},39:{day:"Fredag",slot:"15:00\u201316:00",ag:"Open",cl:"ag-open"},40:{day:"Fredag",slot:"16:00\u201317:00",ag:"Open",cl:"ag-open"},41:{day:"Fredag",slot:"16:00\u201317:00",ag:"Open",cl:"ag-open"},42:{day:"Fredag",slot:"16:00\u201317:00",ag:"Open",cl:"ag-open"}};
+const assignments=${assignJSON};
+const players=[{n:"Svend Bjerg Boserup",t:1,p:600},{n:"Ro Skov Andersen",t:1,p:600},{n:"Wilma Barrit Christensen",t:1,p:600,u:true},{n:"Valde Bentzen",t:1,p:600},{n:"Agnes Hvidsten Daugaard",t:1,p:600},{n:"Caroline Bodholdt",t:1,p:600},{n:"Iben Hviid-Westergaard",t:1,p:600},{n:"Oliver Bangsgaard",t:1,p:600},{n:"Elin Falkenberg",t:1,p:600},{n:"Elisabeth Kjøller-Hansen",t:1,p:600},{n:"Frederik Bødker",t:1,p:600},{n:"Mark Oscar Bondar",t:1,p:600},{n:"Ellinor Maribo-Barming",t:1,p:600},{n:"Lily Foghsgaard",t:1,p:600},{n:"Kaia Nordang",t:1,p:600},{n:"Eddie Baun-Søgaard",t:1,p:600},{n:"Rita Gundtoft",t:1,p:600},{n:"Frida Læssøe Stephensen",t:1,p:600},{n:"Betty Falbert",t:1,p:600},{n:"Stella Rye",t:1,p:600,u:true},{n:"Ellie Tranberg Sandvik",t:1,p:600},{n:"Herbert Asbæk",t:1,p:600},{n:"Svend Gundtoft",t:1,p:600},{n:"Marcus Espenhein Berg",t:1,p:600},{n:"Erik Otto Frikke Holdt",t:1,p:600},{n:"Sonja Frikke Holdt",t:1,p:600},{n:"Marlowe Bergsøe Morgan",t:1,p:600},{n:"Theodor Nehammer Thorsell",t:1,p:600},{n:"Caia Emmy Vilfort Thomsen",t:1,p:600},{n:"Margrethe Veel Haahr",t:1,p:600},{n:"Anker Bjørnshave Madsen",t:1,p:600},{n:"Viola Bjørnshave Madsen",t:1,p:600},{n:"Kalle Kolringen",t:1,p:600},{n:"Felix Kolringen",t:1,p:600},{n:"Anker Dahl Bentzen",t:1,p:600},{n:"Sophia Søbæk",t:1,p:600},{n:"Kai Bille Ebsen",t:1,p:600,u:true},{n:"Josefine Haugaard Sørensen",t:1,p:600},{n:"Selma Marie Ravn Hansen",t:1,p:600},{n:"Filip Emil Bjerre Ejstrup",t:1,p:600},{n:"Edith Hviid-Westergaard",t:1,p:600},{n:"Sally Van Leeuwen",t:1,p:600},{n:"Vincent Pambi Deleuran",t:1,p:600},{n:"Anna Kruse Simonsen",t:1,p:600},{n:"Viggo Løfberg",t:1,p:600},{n:"Frida Falbert",t:1,p:600},{n:"Gustav Brønd Ejstrup",t:1,p:600},{n:"Emmie Frahm",t:1,p:600,u:true},{n:"Robert Emborg Graabæk",t:1,p:600},{n:"Magnus Hvidsten Daugaard",t:2,p:900},{n:"Julian Mora Peersen",t:2,p:900,u:true},{n:"Hamilton von der Heide",t:2,p:900},{n:"August Stage",t:2,p:900},{n:"Frederik Jul-Rasmussen",t:2,p:900},{n:"Julie Kuur de la Porte",t:2,p:900},{n:"Eske Victor Mikkelsen Klewe",t:2,p:900},{n:"Ella Asta Mørck Gjeraa",t:2,p:900},{n:"Isabel Laursen",t:2,p:900},{n:"Barbara Buchhave Breiter",t:2,p:900},{n:"Amelia Uldahl",t:2,p:900},{n:"Matteo Wittendorff Jensen",t:2,p:900},{n:"Carl-Christian Fredslund",t:2,p:900},{n:"James Lago Christiansen",t:2,p:900,u:true},{n:"Carl-Christian Olsen",t:2,p:900},{n:"Vera Edith Ituri Højland",t:2,p:900},{n:"Hamilton Georg Krone Bertelsen",t:2,p:900},{n:"Ella Alberte Thyge Urban",t:3,p:1100},{n:"Noah Elia Bakka Giustiniani",t:3,p:1100,u:true},{n:"Ray Nicolai Bakka Giustiniani",t:3,p:1100,u:true},{n:"Fie-Amalie Dyrholm Kristiansen",t:3,p:1100},{n:"Fanny Marie Lunn",t:3,p:1100},{n:"Morits Jørgensen",t:3,p:1100},{n:"Alberte Kiær Pedersen",t:3,p:1100},{n:"Asger Elias Wolf Kølle",t:3,p:1100,u:true},{n:"Storm Jonathan Wolf Kølle",t:3,p:1100,u:true}];
+
+const holdMap={};for(let i=1;i<=42;i++)holdMap[i]=[];
+players.forEach(p=>{const a=assignments[p.n];if(a)holdMap[a].push(p.n);});
+
+function initials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function timerLabel(t){return t===1?'1 time om ugen':t===2?'2 timer om ugen':'3 timer om ugen';}
+function norm(s){return s.toLowerCase().replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa').replace(/é/g,'e');}
+
+const inp=document.getElementById('search-input'),sugg=document.getElementById('suggestions'),res=document.getElementById('results');
+let fi=-1;
+inp.addEventListener('input',()=>{const q=inp.value.trim();fi=-1;if(q.length<2){sugg.innerHTML='';sugg.classList.remove('visible');return;}const nq=norm(q);const filt=players.filter(p=>norm(p.n).includes(nq));renderSugg(filt,q);});
+inp.addEventListener('keydown',e=>{const items=sugg.querySelectorAll('.suggestion-item');if(e.key==='ArrowDown'){e.preventDefault();fi=Math.min(fi+1,items.length-1);upF(items);}else if(e.key==='ArrowUp'){e.preventDefault();fi=Math.max(fi-1,0);upF(items);}else if(e.key==='Enter'&&fi>=0){items[fi].click();}else if(e.key==='Escape'){sugg.classList.remove('visible');}});
+document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))sugg.classList.remove('visible');});
+function upF(items){items.forEach((item,i)=>item.classList.toggle('focused',i===fi));if(items[fi])items[fi].scrollIntoView({block:'nearest'});}
+function hl(name,q){const re=new RegExp('('+q.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&')+')','gi');return name.replace(re,'<strong>$1</strong>');}
+function renderSugg(list,q){if(!list.length){sugg.innerHTML='<div class="no-results-drop">Ingen spillere fundet</div>';sugg.classList.add('visible');return;}sugg.innerHTML=list.slice(0,8).map(p=>'<div class="suggestion-item" onclick="sel(\\''+p.n.replace(/'/g,"\\\\'")+'\\'")><div class="suggestion-avatar">'+initials(p.n)+'</div><span class="suggestion-name">'+hl(p.n,q)+'</span><span class="suggestion-meta">'+timerLabel(p.t)+'</span></div>').join('');sugg.classList.add('visible');}
+function sel(navn){const p=players.find(x=>x.n===navn);if(!p)return;inp.value=p.n;sugg.classList.remove('visible');showResult(p);}
+function showResult(p){
+  const a=assignments[p.n];
+  if(!a&&!p.u){res.innerHTML='<div class="unplaced-card"><div class="uc-title">⚠ Afventer holdplacering</div><div class="uc-body">'+p.n+' er tilmeldt men har ikke fået tildelt et hold endnu. Kontakt Jacob.</div></div>';return;}
+  if(p.u&&!a){res.innerHTML='<div class="unplaced-card"><div class="uc-title">⚠ Afventer holdplacering</div><div class="uc-body">'+p.n+' er tilmeldt men har ikke fået tildelt et hold endnu. Kontakt Jacob.</div></div>';return;}
+  const info=holdInfo[a];
+  const members=(holdMap[a]||[]).filter(m=>m!==p.n);
+  const chips=members.length?members.map(m=>'<div class="member-chip" onclick="sel(\\''+m.replace(/'/g,"\\\\'")+'\\'")><div class="chip-av">'+initials(m)+'</div>'+m+'</div>').join(''):'<div class="empty-group">Ingen andre spillere på dette hold endnu</div>';
+  res.innerHTML='<div class="player-card"><div class="pc-top"><div class="pc-avatar">'+initials(p.n)+'</div><div><div class="pc-name">'+p.n+'</div><div class="pc-timer">'+timerLabel(p.t)+'</div></div><div class="pc-price"><strong>'+p.p+' kr</strong>træning/sæson</div></div><div class="holds-section"><div class="hold-row '+info.cl+'"><div class="hold-hero"><div class="hold-color-bar"></div><div class="hold-number-block"><div class="hold-number-label">Hold</div><div class="hold-number-big">'+a+'</div><span class="age-pill">'+info.ag+'</span><div class="confirmed-banner">✓ Bekræftet</div></div><div class="hold-details"><div class="hold-day-time"><span class="day-chip">'+info.day+'</span><span class="time-chip">'+info.slot+'</span></div></div></div><div class="hold-info"><div class="group-label">Holdkammerater</div><div class="member-chips">'+chips+'</div></div></div></div></div>';
+}
+<\/script>
+</div>
+
+</body>
+</html>`;
+}
+
+// Init
+renderSidebar();
+updateProgress();
+// (loadFromSheet called after password check)
+
+
+// ── Eksporter liste til Teresa ────────────────────────────────────────────────
+function exportList() {
+  const assigned = players.filter(p => p.a !== null).sort((a,b) => a.a - b.a);
+  const unassigned = players.filter(p => p.a === null);
+
+  let lines = [];
+  lines.push('TTK Holdtildeling – Sommertræning 2026');
+  lines.push('Eksporteret: ' + new Date().toLocaleDateString('da-DK'));
+  lines.push('');
+  lines.push('=== TILDELTE SPILLERE (' + assigned.length + ' stk) ===');
+  lines.push('');
+
+  let currentHold = null;
+  assigned.forEach(p => {
+    if(p.a !== currentHold) {
+      currentHold = p.a;
+      const info = holdInfo[p.a];
+      lines.push('Hold ' + p.a + ' · ' + info.ag + ' · ' + info.day + ' ' + info.slot);
+    }
+    lines.push('  - ' + p.n);
+  });
+
+  if(unassigned.length > 0) {
+    lines.push('');
+    lines.push('=== IKKE TILDELT ENDNU (' + unassigned.length + ' stk) ===');
+    unassigned.forEach(p => lines.push('  - ' + p.n));
+  }
+
+  const text = lines.join('\n');
+  const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TTK_Holdtildeling_' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+}
+
+// ── Password ──────────────────────────────────────────────────────────────────
+// Change 'ttk2026' to whatever password you want
+const ADMIN_PASSWORD = 'ttk2026';
+
+function checkPw() {
+  const val = document.getElementById('pw-field').value;
+  const errEl = document.getElementById('pw-error');
+  if(val === ADMIN_PASSWORD) {
+    document.getElementById('pw-screen').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    loadFromSheet();
+  } else {
+    const inp = document.getElementById('pw-field');
+    inp.classList.remove('shake');
+    void inp.offsetWidth; // force reflow to restart animation
+    inp.classList.add('shake');
+    inp.value = '';
+    errEl.textContent = 'Forkert password – prøv igen';
+    setTimeout(() => { inp.classList.remove('shake'); }, 400);
+    inp.focus();
+  }
+}
+
+// Focus password field on load
+document.getElementById('pw-field').focus();
+
+</script>
+</body>
+</html>`;
