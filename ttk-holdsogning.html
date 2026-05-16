@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taarbæk Tennis Klub – Holdsøgning 2026</title>
+<style>
+:root{
+  --navy:#1B3A5C;--blue:#2E6DA4;--u8-bg:#D6EFFF;--u8-fg:#0A4A7A;--u10-bg:#D5F0E8;--u10-fg:#0A4A2A;
+  --u12-bg:#FFF3D6;--u12-fg:#7A4A0A;--u14-bg:#F0D6FF;--u14-fg:#4A0A7A;--open-bg:#F0F0F0;--open-fg:#444;
+  --red:#C0392B;--green:#16a34a;--amber:#d97706;--text:#1a1a2e;--muted:#6b7280;--border:#d1dde8;
+  --surface:#f8fafc;--white:#fff;--radius:12px;--shadow:0 2px 12px rgba(27,58,92,.10);
+  --shadow-lg:0 8px 32px rgba(27,58,92,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#eef3f8;color:var(--text);min-height:100vh}
+
+/* ── HEADER ── */
+.site-header{background:var(--navy);padding:28px 24px 24px;text-align:center}
+.site-header .club-name{color:rgba(255,255,255,.6);font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.site-header h1{color:#fff;font-size:24px;font-weight:600;margin-bottom:6px}
+.site-header .subtitle{color:rgba(255,255,255,.55);font-size:13px}
+.status-wrap{max-width:680px;margin:16px auto 0;padding:0 20px}
+.status{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--muted);box-shadow:var(--shadow)}
+.status.ok{color:#166534;border-color:#86efac;background:#f0fdf4}
+.status.err{color:#991b1b;border-color:#fca5a5;background:#fff5f5}
+
+/* ── SEARCH ── */
+.search-wrap{max-width:560px;margin:0 auto;padding:24px 20px 0}
+.search-label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px}
+.search-box{position:relative}
+.search-box input{width:100%;padding:14px 48px 14px 18px;font-size:17px;border:2px solid var(--border);border-radius:var(--radius);background:var(--white);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;box-shadow:var(--shadow)}
+.search-box input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,109,164,.15)}
+.search-box input::placeholder{color:#aab4be}
+.search-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#aab4be;font-size:20px;pointer-events:none}
+.suggestions{background:var(--white);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);box-shadow:var(--shadow-lg);max-height:260px;overflow-y:auto;display:none;position:relative;z-index:10}
+.suggestions.visible{display:block}
+.suggestion-item{padding:12px 18px;cursor:pointer;border-bottom:1px solid #f0f4f8;display:flex;align-items:center;gap:10px;transition:background .1s}
+.suggestion-item:hover,.suggestion-item.focused{background:#eef5fc}
+.suggestion-name{font-size:15px;font-weight:500}
+.suggestion-meta{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.suggestion-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.no-results-drop{padding:16px 18px;color:var(--muted);font-size:14px;text-align:center}
+
+/* ── RESULTS (player card) ── */
+.results{max-width:680px;margin:16px auto 0;padding:0 20px}
+.compact-hint{text-align:center;padding:10px 0 4px;font-size:13px;color:var(--muted)}
+.player-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden;margin-bottom:0}
+.pc-top{background:var(--navy);padding:18px 22px;display:flex;align-items:center;gap:14px}
+.pc-avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,.25)}
+.pc-name{color:#fff;font-size:18px;font-weight:600}
+.pc-timer{color:rgba(255,255,255,.6);font-size:13px;margin-top:2px}
+.pc-price{margin-left:auto;text-align:right;color:rgba(255,255,255,.5);font-size:11px}
+.pc-price strong{display:block;color:#fff;font-size:16px}
+.holds-section{padding:0}
+.hold-row{border-bottom:1px solid var(--border);overflow:hidden}
+.hold-row:last-child{border-bottom:none}
+.hold-hero{display:flex;align-items:stretch;min-height:90px}
+.hold-color-bar{width:8px;flex-shrink:0}
+.hold-number-block{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 20px;min-width:110px;border-right:1px solid rgba(0,0,0,.08)}
+.hold-number-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:4px}
+.hold-number-big{font-size:40px;font-weight:800;line-height:1}
+.age-pill{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;margin-top:6px}
+.confirmed-banner{background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:#15803d;display:inline-flex;align-items:center;gap:4px;margin-top:6px}
+.hold-details{flex:1;padding:14px 18px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.hold-day-time{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day-chip{font-size:15px;font-weight:700;color:var(--navy)}
+.time-chip{font-size:14px;font-weight:600;background:var(--navy);color:#fff;padding:4px 12px;border-radius:20px}
+.hold-info{flex:1;padding:0 18px 14px}
+.group-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.member-chips{display:flex;flex-wrap:wrap;gap:6px}
+.member-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 6px;font-size:12px;cursor:pointer;transition:background .1s}
+.member-chip:hover{background:#dbeafe;border-color:#93c5fd}
+.chip-av{width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+.empty-group{font-size:12px;color:var(--muted);font-style:italic}
+.hold-swap-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .12s;margin-top:10px;width:100%}
+.hold-swap-btn:hover{background:#fffbeb;border-color:var(--amber);color:var(--amber)}
+.unplaced-card{background:#fff5f5;border:1.5px solid #f5c6c6;border-left:5px solid var(--red);border-radius:var(--radius);padding:18px 20px;margin-bottom:0}
+.unplaced-card .uc-title{font-size:15px;font-weight:600;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.unplaced-card .uc-body{font-size:13px;color:#7f1d1d;line-height:1.6}
+
+/* ── AGE GROUP COLORS (player card) ── */
+.ag-u8 .hold-color-bar{background:#0A4A7A}.ag-u8 .hold-number-block{background:var(--u8-bg);color:var(--u8-fg)}.ag-u8 .age-pill{background:#0A4A7A;color:#D6EFFF}
+.ag-u10 .hold-color-bar{background:#0A4A2A}.ag-u10 .hold-number-block{background:var(--u10-bg);color:var(--u10-fg)}.ag-u10 .age-pill{background:#0A4A2A;color:#D5F0E8}
+.ag-u12 .hold-color-bar{background:#7A4A0A}.ag-u12 .hold-number-block{background:var(--u12-bg);color:var(--u12-fg)}.ag-u12 .age-pill{background:#7A4A0A;color:#FFF3D6}
+.ag-u14 .hold-color-bar{background:#4A0A7A}.ag-u14 .hold-number-block{background:var(--u14-bg);color:var(--u14-fg)}.ag-u14 .age-pill{background:#4A0A7A;color:#F0D6FF}
+.ag-open .hold-color-bar{background:#888}.ag-open .hold-number-block{background:var(--open-bg);color:var(--open-fg)}.ag-open .age-pill{background:#888;color:#fff}
+
+/* ── SCHEDULE ── */
+.schedule-section{max-width:680px;margin:20px auto 32px;padding:0 20px}
+.schedule-section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.schedule-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden}
+.day-tabs-wrap{background:var(--navy);display:flex}
+.day-tab{flex:1;padding:13px 4px 11px;background:none;border:none;color:rgba(255,255,255,.5);font-size:13px;font-weight:600;cursor:pointer;position:relative;transition:color .15s;letter-spacing:.02em}
+.day-tab.active{color:#fff}
+.day-tab.active::after{content:'';position:absolute;bottom:0;left:15%;right:15%;height:3px;background:#4ade80;border-radius:2px 2px 0 0}
+.tab-dot{display:inline-block;width:6px;height:6px;background:#4ade80;border-radius:50%;margin-left:3px;vertical-align:middle;margin-bottom:1px}
+.schedule-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.time-slot-row{display:flex;align-items:stretch;gap:8px}
+.time-label{width:56px;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding-right:4px;gap:1px}
+.time-label span{font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;line-height:1.3}
+.holds-row{display:flex;gap:6px;flex:1}
+.hold-cell{flex:1;border-radius:8px;padding:8px 4px 6px;cursor:pointer;transition:transform .1s,box-shadow .15s;text-align:center;min-height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:2px solid transparent;-webkit-tap-highlight-color:transparent}
+.hold-cell:active{transform:scale(.96)}
+.hold-cell.highlighted{border-color:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.2)}
+.hc-label{font-size:8px;font-weight:600;opacity:.55;text-transform:uppercase;letter-spacing:.05em}
+.hc-num{font-size:26px;font-weight:800;line-height:1}
+.hc-count{font-size:9px;font-weight:600;opacity:.65}
+.hc-ag{font-size:8px;font-weight:700;padding:1px 5px;border-radius:8px;margin-top:1px}
+.hc-you{font-size:8px;font-weight:800;color:var(--green);margin-top:2px}
+.hold-cell.ag-u8{background:var(--u8-bg);color:var(--u8-fg)}.hold-cell.ag-u8 .hc-ag{background:var(--u8-fg);color:var(--u8-bg)}
+.hold-cell.ag-u10{background:var(--u10-bg);color:var(--u10-fg)}.hold-cell.ag-u10 .hc-ag{background:var(--u10-fg);color:var(--u10-bg)}
+.hold-cell.ag-u12{background:var(--u12-bg);color:var(--u12-fg)}.hold-cell.ag-u12 .hc-ag{background:var(--u12-fg);color:var(--u12-bg)}
+.hold-cell.ag-u14{background:var(--u14-bg);color:var(--u14-fg)}.hold-cell.ag-u14 .hc-ag{background:var(--u14-fg);color:var(--u14-bg)}
+.hold-cell.ag-open{background:var(--open-bg);color:var(--open-fg)}.hold-cell.ag-open .hc-ag{background:#888;color:#fff}
+
+/* ── MODALS (bottom sheet) ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:flex-end;justify-content:center;visibility:hidden;opacity:0;transition:visibility 0s .25s,opacity .2s}
+.modal-overlay.open{visibility:visible;opacity:1;transition:opacity .2s}
+.modal-sheet{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);position:relative}
+.modal-overlay.open .modal-sheet{transform:translateY(0)}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0}
+.modal-close-btn{position:absolute;top:14px;right:16px;background:var(--surface);border:none;border-radius:50%;width:30px;height:30px;font-size:14px;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;z-index:2}
+
+/* Hold detail modal */
+.modal-hold-hero{padding:14px 20px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.modal-hold-hero.ag-u8{background:var(--u8-bg);color:var(--u8-fg)}
+.modal-hold-hero.ag-u10{background:var(--u10-bg);color:var(--u10-fg)}
+.modal-hold-hero.ag-u12{background:var(--u12-bg);color:var(--u12-fg)}
+.modal-hold-hero.ag-u14{background:var(--u14-bg);color:var(--u14-fg)}
+.modal-hold-hero.ag-open{background:var(--open-bg);color:var(--open-fg)}
+.mhh-num{font-size:38px;font-weight:800;min-width:52px;text-align:center;line-height:1}
+.mhh-info{flex:1}
+.mhh-label{font-size:9px;font-weight:600;opacity:.55;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.mhh-daytime{font-size:16px;font-weight:700}
+.mhh-ag{font-size:12px;opacity:.7;margin-top:2px}
+.mhh-count{text-align:right;font-size:12px;opacity:.7}
+.mhh-count strong{display:block;font-size:22px;font-weight:800;opacity:1}
+.modal-section{padding:16px 20px}
+.modal-section+.modal-section{padding-top:0}
+.modal-section-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.modal-members{display:flex;flex-direction:column;gap:6px}
+.modal-member-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-radius:8px;cursor:pointer;transition:background .1s}
+.modal-member-row:hover{background:#dbeafe}
+.mm-av{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.mm-name{font-size:14px;font-weight:500}
+.modal-empty-members{font-size:13px;color:var(--muted);font-style:italic;text-align:center;padding:10px 0}
+.modal-swap-btn{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:12px}
+.modal-swap-btn:hover{background:var(--blue)}
+
+/* Swap modal */
+.swap-modal-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:16px}
+.swap-from-box{background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px}
+.sfb-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.sfb-val{font-size:15px;font-weight:700;color:var(--navy)}
+.swap-picks-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.swap-day-group{margin-bottom:14px}
+.sdg-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding:0 2px}
+.swap-hold-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:2px solid transparent;border-radius:8px;cursor:pointer;transition:all .12s;margin-bottom:4px}
+.swap-hold-row:hover{background:#eef5fc;border-color:var(--blue)}
+.swap-hold-row.selected{background:#f0fdf4;border-color:var(--green)}
+.swap-hold-row.full{opacity:.38;pointer-events:none}
+.shr-num{font-size:18px;font-weight:800;min-width:28px;text-align:center}
+.shr-info{flex:1}
+.shr-daytime{font-size:13px;font-weight:600;color:var(--navy)}
+.shr-ag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.shr-count{font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+.shr-check{display:none;width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.swap-hold-row.selected .shr-check{display:flex}
+.shr-ag.ag-u8{background:var(--u8-bg);color:var(--u8-fg)}
+.shr-ag.ag-u10{background:var(--u10-bg);color:var(--u10-fg)}
+.shr-ag.ag-u12{background:var(--u12-bg);color:var(--u12-fg)}
+.shr-ag.ag-u14{background:var(--u14-bg);color:var(--u14-fg)}
+.shr-ag.ag-open{background:var(--open-bg);color:var(--open-fg)}
+.submit-swap-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px}
+.submit-swap-btn:disabled{background:#d1d5db;cursor:not-allowed}
+.submit-swap-btn:not(:disabled):hover{background:#15803d}
+.swap-success{text-align:center;padding:28px 20px}
+.swap-success .ss-icon{font-size:44px;margin-bottom:14px}
+.swap-success .ss-title{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.swap-success .ss-body{font-size:14px;color:var(--muted);line-height:1.7}
+
+.site-footer{text-align:center;padding:20px;font-size:11px;color:#94a3b8;border-top:1px solid var(--border);margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <div class="club-name">Taarbæk Tennis Klub</div>
+  <h1>Holdsøgning – Sommertræning 2026</h1>
+  <div class="subtitle">Mandag 27. april – september · Træner: Jacob · Endelige holdplaceringer</div>
+</div>
+
+<div class="status-wrap">
+  <div class="status" id="status">Henter data…</div>
+</div>
+
+<div class="search-wrap">
+  <label class="search-label" for="search-input">Søg dit navn</label>
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="F.eks. Lily Foghsgaard…" autocomplete="off" spellcheck="false">
+    <span class="search-icon">⌕</span>
+  </div>
+  <div class="suggestions" id="suggestions"></div>
+</div>
+
+<div class="results" id="results">
+  <div class="compact-hint">Skriv dit navn ovenfor for at finde dine hold</div>
+</div>
+
+<div class="schedule-section" id="schedule-section">
+  <div class="schedule-section-label">Ugeskema – alle hold</div>
+  <div class="schedule-card">
+    <div class="day-tabs-wrap">
+      <button class="day-tab active" data-day="man" onclick="setDay('man')">Man</button>
+      <button class="day-tab" data-day="tir" onclick="setDay('tir')">Tir</button>
+      <button class="day-tab" data-day="ons" onclick="setDay('ons')">Ons</button>
+      <button class="day-tab" data-day="tor" onclick="setDay('tor')">Tor</button>
+      <button class="day-tab" data-day="fre" onclick="setDay('fre')">Fre</button>
+    </div>
+    <div class="schedule-body" id="schedule-grid"></div>
+  </div>
+</div>
+
+<div class="site-footer">Taarbæk Tennis Klub · Sommertræning 2026</div>
+
+<!-- HOLD DETAIL MODAL -->
+<div class="modal-overlay" id="hold-modal" onclick="closeModal('hold-modal')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <button class="modal-close-btn" onclick="closeModal('hold-modal')">✕</button>
+    <div id="hold-modal-content"></div>
+  </div>
+</div>
+
+<!-- SWAP REQUEST MODAL -->
+<div class="modal-overlay" id="swap-modal" onclick="closeModal('swap-modal')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <button class="modal-close-btn" onclick="closeModal('swap-modal')">✕</button>
+    <div id="swap-modal-content"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqqmTbi2CcGYpMFF8J_Aat6RxqTR6q7gkF0fe2airnbKfOcPLGrKP6l-AJbKZ1UMo/exec';
+
+const holdInfo = {
+  1:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},2:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},3:{day:"Mandag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  4:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},5:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},6:{day:"Mandag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  7:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},8:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},9:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  10:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},11:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},12:{day:"Tirsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  13:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},14:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},15:{day:"Tirsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  16:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},17:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},18:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  19:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},20:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},21:{day:"Onsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  22:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},23:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},24:{day:"Onsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  25:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},26:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},27:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  28:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},29:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},30:{day:"Torsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  31:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},32:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},33:{day:"Torsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  34:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},35:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},36:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  37:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},38:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},39:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},
+  40:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},41:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},42:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"}
+};
+
+const sched = {
+  man:{ label:'Mandag',  slots:[{t:'15:00–16:00',h:[1,2,3]},{t:'16:00–17:00',h:[4,5,6]},{t:'17:00–18:00',h:[7,8,9]}] },
+  tir:{ label:'Tirsdag', slots:[{t:'15:00–16:00',h:[10,11,12]},{t:'16:00–17:00',h:[13,14,15]},{t:'17:00–18:00',h:[16,17,18]}] },
+  ons:{ label:'Onsdag',  slots:[{t:'15:00–16:00',h:[19,20,21]},{t:'16:00–17:00',h:[22,23,24]},{t:'17:00–18:00',h:[25,26,27]}] },
+  tor:{ label:'Torsdag', slots:[{t:'15:00–16:00',h:[28,29,30]},{t:'16:00–17:00',h:[31,32,33]},{t:'17:00–18:00',h:[34,35,36]}] },
+  fre:{ label:'Fredag',  slots:[{t:'15:00–16:00',h:[37,38,39]},{t:'16:00–17:00',h:[40,41,42]}] },
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let players = [];
+let assignments = {};
+let holdMap = {};
+let extraHolds = [];
+let currentDay = 'man';
+let selectedPlayer = null;
+let swapFromHold = null;
+let swapToHold = null;
+
+function resetHoldMap() {
+  holdMap = {};
+  for (let i = 1; i <= 42; i++) holdMap[String(i)] = [];
+}
+resetHoldMap();
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function initials(n){ return (n||'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function timerLabel(t){ return t===1?'1 time om ugen':t===2?'2 timer om ugen':'3 timer om ugen'; }
+function norm(s){ return (s||'').toLowerCase().replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa').replace(/é/g,'e'); }
+function setStatus(msg,cls=''){ const el=document.getElementById('status'); el.className='status '+cls; el.textContent=msg; }
+function normalizePlayer(raw){ return { n:String(raw.n||raw.name||'').trim(), t:Number(raw.t||raw.timer||raw.hours||1), p:Number(raw.p||raw.price||raw.pris||0), u:Boolean(raw.u||raw.unplaced||false) }; }
+function getBaseHold(holdNo){ return Math.floor(Number(holdNo)); }
+function getHoldInfoForHold(holdNo){ return holdInfo[holdNo] || holdInfo[getBaseHold(holdNo)] || null; }
+function getExtraHoldsForBaseHold(baseHold){
+  const prefix = String(baseHold) + '.';
+  return extraHolds.filter(h => String(h).startsWith(prefix)).sort((a,b)=>Number(a)-Number(b));
+}
+function getVisibleSlotHolds(slotHolds){ return slotHolds.map(nr => String(nr)); }
+function hasHoldInSlot(holdNo, slot){ return slot.h.map(String).includes(String(getBaseHold(holdNo))); }
+function getDisplayHoldNo(holdNo){ return String(getBaseHold(holdNo)); }
+function getHoldKeysForDisplayHold(holdNo){
+  const base = getDisplayHoldNo(holdNo);
+  const keys = new Set([base]);
+
+  getExtraHoldsForBaseHold(base).forEach(h => keys.add(String(h)));
+  Object.keys(holdMap).forEach(key => {
+    if (getDisplayHoldNo(key) === base) keys.add(String(key));
+  });
+
+  return Array.from(keys).sort((a,b)=>Number(a)-Number(b));
+}
+function getHoldCapacity(holdNo){ return getHoldKeysForDisplayHold(holdNo).length * 6; }
+function getMembersForDisplayHold(holdNo){
+  const members = [];
+  getHoldKeysForDisplayHold(holdNo).forEach(key => (holdMap[key] || []).forEach(name => {
+    if (!members.includes(name)) members.push(name);
+  }));
+  return members;
+}
+function playerHasDisplayHold(playerHolds, holdNo){
+  const base = getDisplayHoldNo(holdNo);
+  return playerHolds.some(h => getDisplayHoldNo(h) === base);
+}
+function uniqueDisplayHolds(holds){
+  const seen = new Set();
+  return holds.map(getDisplayHoldNo).filter(hold => {
+    if (seen.has(hold)) return false;
+    seen.add(hold);
+    return true;
+  });
+}
+
+function rebuildHoldMap() {
+  resetHoldMap();
+  players.forEach(p => {
+    (assignments[p.n]||[]).forEach(h => {
+      const key = String(h);
+      if (!holdMap[key]) holdMap[key] = [];
+      holdMap[key].push(p.n);
+    });
+  });
+}
+
+// ─── SCHEDULE ────────────────────────────────────────────────────────────────
+function setDay(dk) {
+  currentDay = dk;
+  document.querySelectorAll('.day-tab').forEach(t => t.classList.toggle('active', t.dataset.day === dk));
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const grid = document.getElementById('schedule-grid');
+  const day = sched[currentDay];
+  const playerHolds = selectedPlayer ? (assignments[selectedPlayer.n]||[]) : [];
+
+  grid.innerHTML = day.slots.map(slot => {
+    const [from, to] = slot.t.split('–');
+    const cells = getVisibleSlotHolds(slot.h).map(nr => {
+      const info = getHoldInfoForHold(nr);
+      if (!info) return '';
+      const members = getMembersForDisplayHold(nr);
+      const capacity = getHoldCapacity(nr);
+      const hl = playerHasDisplayHold(playerHolds, nr);
+      return `<div class="hold-cell ${info.cl}${hl?' highlighted':''}" onclick="openHoldModal('${nr}')">
+        <div class="hc-label">Hold</div>
+        <div class="hc-num">${getDisplayHoldNo(nr)}</div>
+        <div class="hc-count">${members.length}/${capacity}</div>
+        <span class="hc-ag">${info.ag}</span>
+        ${hl ? '<div class="hc-you">✓ Dig</div>' : ''}
+      </div>`;
+    }).join('');
+    return `<div class="time-slot-row">
+      <div class="time-label"><span>${from}</span><span>${to}</span></div>
+      <div class="holds-row">${cells}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateTabDots() {
+  const playerHolds = selectedPlayer ? (assignments[selectedPlayer.n]||[]) : [];
+  document.querySelectorAll('.day-tab').forEach(tab => {
+    const dk = tab.dataset.day;
+    const hasHold = sched[dk].slots.some(s => playerHolds.some(h => hasHoldInSlot(h, s)));
+    const existing = tab.querySelector('.tab-dot');
+    if (hasHold && !existing) { const d=document.createElement('span'); d.className='tab-dot'; tab.appendChild(d); }
+    else if (!hasHold && existing) existing.remove();
+  });
+}
+
+// ─── MODALS ──────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
+
+function openHoldModal(nr) {
+  const info = getHoldInfoForHold(nr);
+  if (!info) return;
+  const members = getMembersForDisplayHold(nr);
+  const capacity = getHoldCapacity(nr);
+  const displayNr = getDisplayHoldNo(nr);
+  const playerHolds = selectedPlayer ? (assignments[selectedPlayer.n]||[]) : [];
+  const isMyHold = playerHasDisplayHold(playerHolds, nr);
+
+  const memberHtml = members.length
+    ? members.map(m => `<div class="modal-member-row" onclick="closeModal('hold-modal');sel('${m.replace(/'/g,"\\'")}')">
+        <div class="mm-av">${initials(m)}</div>
+        <div class="mm-name">${m}</div>
+      </div>`).join('')
+    : '<div class="modal-empty-members">Ingen spillere på dette hold endnu</div>';
+
+  document.getElementById('hold-modal-content').innerHTML = `
+    <div class="modal-hold-hero ${info.cl}">
+      <div class="mhh-num">${displayNr}</div>
+      <div class="mhh-info">
+        <div class="mhh-label">Hold</div>
+        <div class="mhh-daytime">${info.day} · ${info.slot}</div>
+        <div class="mhh-ag">${info.ag}</div>
+      </div>
+      <div class="mhh-count"><strong>${members.length}</strong>/${capacity}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Spillere på holdet</div>
+      <div class="modal-members">${memberHtml}</div>
+      ${isMyHold ? `<button class="modal-swap-btn" onclick="closeModal('hold-modal');openSwapModal('${displayNr}')">⇄ Anmod om holdbytte</button>` : ''}
+    </div>`;
+  openModal('hold-modal');
+}
+
+function openSwapModal(fromNr) {
+  swapFromHold = fromNr;
+  swapToHold = null;
+  const fromInfo = getHoldInfoForHold(fromNr);
+
+  const groupsHtml = Object.entries(sched).map(([dk, day]) => {
+    const rows = day.slots.flatMap(slot => getVisibleSlotHolds(slot.h).map(nr => {
+      if (String(nr) === String(fromNr)) return '';
+      const info = getHoldInfoForHold(nr);
+      if (!info) return '';
+      const cnt = getMembersForDisplayHold(nr).length;
+      const capacity = getHoldCapacity(nr);
+      const isFull = cnt >= capacity;
+      return `<div class="swap-hold-row${isFull?' full':''}" id="shr-${nr}" onclick="selectSwapTarget('${nr}')">
+        <div class="shr-num">${nr}</div>
+        <div class="shr-info"><div class="shr-daytime">${info.slot}</div></div>
+        <span class="shr-ag ${info.cl}">${info.ag}</span>
+        <div class="shr-count">${cnt}/${capacity}</div>
+        <div class="shr-check">✓</div>
+      </div>`;
+    })).join('');
+    return rows ? `<div class="swap-day-group"><div class="sdg-label">${day.label}</div>${rows}</div>` : '';
+  }).join('');
+
+  document.getElementById('swap-modal-content').innerHTML = `
+    <div class="modal-section">
+      <div class="swap-modal-title">⇄ Anmod om holdbytte</div>
+      <div class="swap-from-box">
+        <div class="sfb-label">Dit nuværende hold</div>
+        <div class="sfb-val">Hold ${fromNr} · ${fromInfo.day} · ${fromInfo.slot}</div>
+      </div>
+      <div class="swap-picks-label">Vælg det hold du ønsker i stedet</div>
+      ${groupsHtml}
+      <button class="submit-swap-btn" id="submit-swap-btn" disabled onclick="submitSwap()">Send anmodning</button>
+    </div>`;
+  openModal('swap-modal');
+}
+
+function selectSwapTarget(nr) {
+  swapToHold = nr;
+  document.querySelectorAll('.swap-hold-row').forEach(r => r.classList.remove('selected'));
+  const row = document.getElementById('shr-'+nr);
+  if (row) row.classList.add('selected');
+  const btn = document.getElementById('submit-swap-btn');
+  if (btn) btn.disabled = false;
+}
+
+async function submitSwap() {
+  if (!swapFromHold || !swapToHold || !selectedPlayer) return;
+  const btn = document.getElementById('submit-swap-btn');
+  if (btn) { btn.disabled=true; btn.textContent='Sender…'; }
+  const fromInfo = getHoldInfoForHold(swapFromHold);
+  const toInfo   = getHoldInfoForHold(swapToHold);
+  try {
+    const url = `${SCRIPT_URL}?action=swapRequest&name=${encodeURIComponent(selectedPlayer.n)}&fromHold=${swapFromHold}&toHold=${swapToHold}`;
+    const data = await fetch(url).then(r => r.json());
+    if (!data.ok || !data.id) {
+      throw new Error(data.error || 'Anmodningen blev ikke gemt. Apps Script skal opdateres/deployes.');
+    }
+    document.getElementById('swap-modal-content').innerHTML = `
+      <div class="swap-success">
+        <div class="ss-icon">✅</div>
+        <div class="ss-title">Anmodning sendt!</div>
+        <div class="ss-body">
+          <strong>Fra:</strong> Hold ${swapFromHold} · ${fromInfo.day} · ${fromInfo.slot}<br>
+          <strong>Til:</strong> Hold ${swapToHold} · ${toInfo.day} · ${toInfo.slot}<br><br>
+          Jacob vil behandle din anmodning snarest.
+        </div>
+      </div>`;
+  } catch(e) {
+    if (btn) { btn.disabled=false; btn.textContent='Send anmodning'; }
+    alert('Kunne ikke sende anmodning – prøv igen.');
+  }
+}
+
+// ─── SEARCH ──────────────────────────────────────────────────────────────────
+const inp  = document.getElementById('search-input');
+const sugg = document.getElementById('suggestions');
+const res  = document.getElementById('results');
+let fi = -1;
+
+inp.addEventListener('input', () => {
+  const q = inp.value.trim();
+  fi = -1;
+  if (q.length < 2) { sugg.innerHTML=''; sugg.classList.remove('visible'); return; }
+  renderSugg(players.filter(p => norm(p.n).includes(norm(q))), q);
+});
+
+inp.addEventListener('keydown', e => {
+  const items = sugg.querySelectorAll('.suggestion-item');
+  if      (e.key==='ArrowDown')  { e.preventDefault(); fi=Math.min(fi+1,items.length-1); upF(items); }
+  else if (e.key==='ArrowUp')    { e.preventDefault(); fi=Math.max(fi-1,0); upF(items); }
+  else if (e.key==='Enter'&&fi>=0) items[fi].click();
+  else if (e.key==='Escape')     sugg.classList.remove('visible');
+});
+
+document.addEventListener('click', e => { if(!e.target.closest('.search-wrap')) sugg.classList.remove('visible'); });
+
+function upF(items){ items.forEach((item,i)=>item.classList.toggle('focused',i===fi)); if(items[fi]) items[fi].scrollIntoView({block:'nearest'}); }
+function hl(name,q){ return name.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<strong>$1</strong>'); }
+
+function renderSugg(list, q) {
+  if (!list.length) { sugg.innerHTML='<div class="no-results-drop">Ingen spillere fundet</div>'; sugg.classList.add('visible'); return; }
+  sugg.innerHTML = list.slice(0,8).map(p => {
+    const holds = assignments[p.n]||[];
+    const meta = holds.length ? `${holds.length} hold` : 'Ingen hold endnu';
+    return `<div class="suggestion-item" onclick="sel('${p.n.replace(/'/g,"\\'")}')">
+      <div class="suggestion-avatar">${initials(p.n)}</div>
+      <span class="suggestion-name">${hl(p.n,q)}</span>
+      <span class="suggestion-meta">${meta}</span>
+    </div>`;
+  }).join('');
+  sugg.classList.add('visible');
+}
+
+function sel(navn) {
+  const p = players.find(x => x.n === navn);
+  if (!p) return;
+  inp.value = p.n;
+  sugg.classList.remove('visible');
+  selectedPlayer = p;
+  updateTabDots();
+  const holds = assignments[p.n]||[];
+  if (holds.length) {
+    const firstHold = holds[0];
+    const dayKey = Object.keys(sched).find(dk => sched[dk].slots.some(s => hasHoldInSlot(firstHold, s)));
+    if (dayKey) setDay(dayKey); else renderSchedule();
+  } else {
+    renderSchedule();
+  }
+  showResult(p);
+  setTimeout(() => document.getElementById('schedule-section').scrollIntoView({behavior:'smooth',block:'start'}), 150);
+}
+
+// ─── PLAYER RESULT ───────────────────────────────────────────────────────────
+function renderHoldRow(p, holdNo) {
+  const info = getHoldInfoForHold(holdNo);
+  if (!info) return '';
+  const displayNr = getDisplayHoldNo(holdNo);
+  const members = getMembersForDisplayHold(displayNr).filter(m => m !== p.n);
+  const chips = members.length
+    ? members.map(m => `<div class="member-chip" onclick="sel('${m.replace(/'/g,"\\'")}')"><div class="chip-av">${initials(m)}</div>${m}</div>`).join('')
+    : '<div class="empty-group">Ingen andre spillere på dette hold endnu</div>';
+  return `<div class="hold-row ${info.cl}">
+    <div class="hold-hero">
+      <div class="hold-color-bar"></div>
+      <div class="hold-number-block">
+        <div class="hold-number-label">Hold</div>
+        <div class="hold-number-big">${displayNr}</div>
+        <span class="age-pill">${info.ag}</span>
+        <div class="confirmed-banner">✓ Bekræftet</div>
+      </div>
+      <div class="hold-details">
+        <div class="hold-day-time">
+          <span class="day-chip">${info.day}</span>
+          <span class="time-chip">${info.slot}</span>
+        </div>
+      </div>
+    </div>
+    <div class="hold-info">
+      <div class="group-label">Holdkammerater</div>
+      <div class="member-chips">${chips}</div>
+      <button class="hold-swap-btn" onclick="openSwapModal('${displayNr}')">⇄ Anmod om holdbytte</button>
+    </div>
+  </div>`;
+}
+
+function showResult(p) {
+  const holds = uniqueDisplayHolds(assignments[p.n]||[]);
+  if (!holds.length) {
+    res.innerHTML = `<div class="unplaced-card">
+      <div class="uc-title">⚠ Afventer holdplacering</div>
+      <div class="uc-body">${p.n} er tilmeldt men har ikke fået tildelt hold endnu. Kontakt Jacob.</div>
+    </div>`;
+    return;
+  }
+  res.innerHTML = `<div class="player-card">
+    <div class="pc-top">
+      <div class="pc-avatar">${initials(p.n)}</div>
+      <div><div class="pc-name">${p.n}</div><div class="pc-timer">${timerLabel(p.t)}</div></div>
+      <div class="pc-price"><strong>${p.p} kr</strong>træning/sæson</div>
+    </div>
+    <div class="holds-section">${holds.map(h => renderHoldRow(p, h)).join('')}</div>
+  </div>`;
+}
+
+// ─── DATA LOAD ───────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if (!data.ok) throw new Error('Ugyldigt svar fra script');
+    if (!Array.isArray(data.players)) throw new Error('Mangler players');
+    if (!data.assignments || typeof data.assignments !== 'object') throw new Error('Mangler assignments');
+
+    players = data.players.map(normalizePlayer).filter(p => p.n);
+    extraHolds = Array.isArray(data.extraHolds)
+      ? data.extraHolds.map(x => String(x).trim()).filter(Boolean)
+      : [];
+    assignments = {};
+    Object.keys(data.assignments).forEach(name => {
+      const raw = data.assignments[name];
+      if (Array.isArray(raw)) {
+        assignments[name] = raw.map(x => String(x).trim()).filter(x => {
+          const n = Number(x);
+          return !isNaN(n) && n >= 1 && n <= 42;
+        }).sort((a,b)=>Number(a)-Number(b));
+      } else if (typeof raw==='string' && raw.trim()) {
+        assignments[name] = raw.replace(/\s/g,'').split(/[;,]/).map(x=>String(x).trim()).filter(x=>{
+          const n = Number(x);
+          return !isNaN(n) && n >= 1 && n <= 42;
+        }).sort((a,b)=>Number(a)-Number(b));
+      } else {
+        assignments[name] = [];
+      }
+    });
+
+    rebuildHoldMap();
+    renderSchedule();
+
+    const assignedCount = Object.values(assignments).filter(a=>Array.isArray(a)&&a.length>0).length;
+    setStatus(`✓ ${players.length} spillere · ${assignedCount} med mindst ét hold`, 'ok');
+  } catch(err) {
+    console.error(err);
+    setStatus('Kunne ikke hente data – ' + err.message, 'err');
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
