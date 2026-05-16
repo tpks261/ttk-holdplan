@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTK Admin – Holdtildeling 2026</title>
+<style>
+:root {
+  --navy:#1B3A5C; --blue:#2E6DA4; --green:#16a34a; --amber:#d97706; --red:#C0392B;
+  --u8-bg:#D6EFFF; --u8-fg:#0A4A7A;
+  --u10-bg:#D5F0E8; --u10-fg:#0A4A2A;
+  --u12-bg:#FFF3D6; --u12-fg:#7A4A0A;
+  --u14-bg:#F0D6FF; --u14-fg:#4A0A7A;
+  --open-bg:#F0F0F0; --open-fg:#444;
+  --text:#1a1a2e; --muted:#6b7280; --border:#d1dde8;
+  --surface:#f4f7fa; --white:#fff;
+  --radius:10px; --shadow:0 2px 10px rgba(27,58,92,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--surface);color:var(--text);min-height:100vh}
+.hdr{background:var(--navy);padding:18px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.hdr h1{color:#fff;font-size:18px;font-weight:600;flex:1}
+.hdr-sub{color:rgba(255,255,255,.5);font-size:11px;margin-top:2px}
+.progress-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.progress-bar-outer{width:180px;height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden}
+.progress-bar-inner{height:100%;background:#4ade80;border-radius:3px;transition:width .3s}
+.progress-text{color:rgba(255,255,255,.7);font-size:11px;font-weight:600}
+.export-btn{background:#4ade80;color:#052e16;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.export-btn:hover{background:#22c55e}
+.export-btn:disabled{background:rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:not-allowed}
+.save-status{font-size:12px;font-weight:600;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);white-space:nowrap;transition:all .3s}
+.save-status.saving{background:rgba(251,191,36,.2);color:#fbbf24}
+.save-status.saved{background:rgba(74,222,128,.2);color:#4ade80}
+.save-status.error{background:rgba(248,113,113,.2);color:#f87171}
+.warn-bar{background:#fef3c7;border-bottom:2px solid #f59e0b;padding:8px 24px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:8px}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:0;height:calc(100vh - 166px)}
+.sidebar{background:var(--white);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-search{padding:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--white);z-index:2}
+.sidebar-search input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:var(--surface)}
+.sidebar-search input:focus{border-color:var(--blue)}
+.filter-row{display:flex;gap:4px;margin-top:8px}
+.filter-chip{flex:1;text-align:center;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .12s}
+.filter-chip.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.player-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f4f8;display:flex;align-items:center;gap:10px;transition:background .1s}
+.player-item:hover{background:#f0f7ff}
+.player-item.active{background:#dbeafe;border-left:3px solid var(--blue)}
+.player-item.assigned{opacity:.7}
+.pi-avatar{width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.pi-avatar.done{background:var(--green)}
+.pi-avatar.unplaced{background:var(--red)}
+.pi-name{font-size:12px;font-weight:500;flex:1;line-height:1.3}
+.pi-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap}
+.pi-badge.assigned{background:#dcfce7;color:#15803d}
+.pi-badge.pending{background:#fef3c7;color:#92400e}
+.pi-badge.unplaced{background:#fee2e2;color:#b91c1c}
+.main{overflow-y:auto;padding:20px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--muted)}
+.empty-state .icon{font-size:48px;opacity:.3}
+.empty-state p{font-size:14px;text-align:center}
+.detail-header{background:var(--navy);border-radius:var(--radius);padding:18px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.dh-avatar{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.25);flex-shrink:0}
+.dh-name{color:#fff;font-size:17px;font-weight:600}
+.dh-meta{color:rgba(255,255,255,.55);font-size:12px;margin-top:2px}
+.dh-status{margin-left:auto;text-align:right}
+.dh-assigned-label{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px}
+.dh-assigned-val{font-size:13px;font-weight:700;color:#4ade80}
+.dh-assigned-val.none{color:rgba(255,255,255,.35);font-weight:400;font-style:italic}
+.section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.holds-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.hold-option{border:2px solid var(--border);border-radius:var(--radius);background:var(--white);cursor:pointer;transition:all .15s;overflow:hidden;display:flex;align-items:stretch}
+.hold-option:hover{border-color:var(--blue);box-shadow:var(--shadow)}
+.hold-option.selected{border-color:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+.hold-option.full{opacity:.5;pointer-events:none}
+.hold-opt-color{width:6px;flex-shrink:0}
+.hold-opt-num{width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 8px;border-right:1px solid rgba(0,0,0,.07);font-weight:800;font-size:28px;line-height:1}
+.hold-opt-num span{font-size:9px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.hold-opt-body{flex:1;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.hold-opt-daytime{flex:1}
+.hold-opt-day{font-size:14px;font-weight:700;color:var(--navy)}
+.hold-opt-time{font-size:13px;font-weight:600;color:var(--blue);margin-top:1px}
+.hold-opt-ag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.hold-opt-count{font-size:10px;color:var(--muted);text-align:right;white-space:nowrap}
+.hold-opt-count strong{display:block;font-size:13px;color:var(--text)}
+.selected-tick{width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;display:none;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.hold-option.selected .selected-tick{display:flex}
+.ag-u8  .hold-opt-color{background:var(--u8-fg)}  .ag-u8  .hold-opt-num{background:var(--u8-bg);color:var(--u8-fg)}   .ag-u8  .hold-opt-ag{background:var(--u8-bg);color:var(--u8-fg)}
+.ag-u10 .hold-opt-color{background:var(--u10-fg)} .ag-u10 .hold-opt-num{background:var(--u10-bg);color:var(--u10-fg)} .ag-u10 .hold-opt-ag{background:var(--u10-bg);color:var(--u10-fg)}
+.ag-u12 .hold-opt-color{background:var(--u12-fg)} .ag-u12 .hold-opt-num{background:var(--u12-bg);color:var(--u12-fg)} .ag-u12 .hold-opt-ag{background:var(--u12-bg);color:var(--u12-fg)}
+.ag-u14 .hold-opt-color{background:var(--u14-fg)} .ag-u14 .hold-opt-num{background:var(--u14-bg);color:var(--u14-fg)} .ag-u14 .hold-opt-ag{background:var(--u14-bg);color:var(--u14-fg)}
+.ag-open .hold-opt-color{background:#888} .ag-open .hold-opt-num{background:var(--open-bg);color:var(--open-fg)} .ag-open .hold-opt-ag{background:var(--open-bg);color:var(--open-fg)}
+.custom-hold{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px}
+.custom-hold label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:8px}
+.custom-hold-row{display:flex;gap:8px;align-items:center}
+.custom-hold input[type=number]{width:90px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;text-align:center;outline:none;color:var(--navy)}
+.custom-hold input:focus{border-color:var(--blue)}
+.custom-hold-btn{padding:8px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.custom-hold-btn:hover{background:var(--blue)}
+.unplaced-note{background:#fff5f5;border:1.5px solid #fca5a5;border-left:5px solid var(--red);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+.unplaced-note .un-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px}
+.unplaced-note .un-body{font-size:12px;color:#7f1d1d;line-height:1.6}
+.nav-row{display:flex;gap:8px;margin-top:8px}
+.nav-btn{flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--white);font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:all .12s}
+.nav-btn:hover{background:#f0f7ff;border-color:var(--blue)}
+.nav-btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.nav-btn.primary:hover{background:var(--blue)}
+.upload-bar{background:#fff;border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.extra-hold-bar{padding:8px 24px}
+.extra-hold-panel{width:100%}
+.extra-hold-panel summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--navy);font-size:12px;font-weight:700}
+.extra-hold-panel summary::-webkit-details-marker{display:none}
+.extra-hold-panel summary::after{content:'Vis';margin-left:auto;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 10px;color:var(--navy);font-size:11px;font-weight:700}
+.extra-hold-panel[open] summary::after{content:'Skjul'}
+.extra-hold-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.swap-requests{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.swap-request{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.swap-request-main{flex:1;min-width:220px}
+.swap-request-name{font-size:13px;font-weight:800;color:var(--navy)}
+.swap-request-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.swap-request-actions{display:flex;gap:8px;margin-left:auto}
+.swap-empty{font-size:12px;color:var(--muted);padding:8px 0}
+.admin-schedule{max-width:980px;margin:0 auto}
+.admin-schedule-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.admin-schedule-title{font-size:18px;font-weight:800;color:var(--navy)}
+.admin-schedule-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.admin-day-tabs{display:flex;background:var(--navy);border-radius:8px 8px 0 0;overflow:hidden}
+.admin-day-tab{flex:1;background:none;border:none;color:rgba(255,255,255,.55);font-size:13px;font-weight:700;padding:12px 6px;cursor:pointer;position:relative}
+.admin-day-tab.active{color:#fff;background:rgba(255,255,255,.08)}
+.admin-day-tab.active::after{content:'';position:absolute;left:18%;right:18%;bottom:0;height:3px;background:#4ade80;border-radius:2px 2px 0 0}
+.admin-schedule-card{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}
+.admin-schedule-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.admin-time-row{display:flex;align-items:stretch;gap:8px}
+.admin-time-label{width:62px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:1px;color:var(--muted);font-size:10px;font-weight:700;line-height:1.25;flex-shrink:0}
+.admin-holds-row{display:flex;gap:8px;flex:1}
+.admin-hold-cell{flex:1;border:2px solid transparent;border-radius:8px;min-height:82px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;text-align:center;transition:transform .1s,box-shadow .15s,border-color .15s}
+.admin-hold-cell:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.admin-hold-cell.active{border-color:var(--navy);box-shadow:0 0 0 3px rgba(27,58,92,.12)}
+.admin-hold-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.55}
+.admin-hold-num{font-size:26px;font-weight:900;line-height:1}
+.admin-hold-count{font-size:10px;font-weight:800;opacity:.7}
+.admin-hold-ag{font-size:8px;font-weight:800;padding:2px 6px;border-radius:9px;margin-top:2px}
+.admin-hold-cell.ag-u8{background:var(--u8-bg);color:var(--u8-fg)}.admin-hold-cell.ag-u8 .admin-hold-ag{background:var(--u8-fg);color:var(--u8-bg)}
+.admin-hold-cell.ag-u10{background:var(--u10-bg);color:var(--u10-fg)}.admin-hold-cell.ag-u10 .admin-hold-ag{background:var(--u10-fg);color:var(--u10-bg)}
+.admin-hold-cell.ag-u12{background:var(--u12-bg);color:var(--u12-fg)}.admin-hold-cell.ag-u12 .admin-hold-ag{background:var(--u12-fg);color:var(--u12-bg)}
+.admin-hold-cell.ag-u14{background:var(--u14-bg);color:var(--u14-fg)}.admin-hold-cell.ag-u14 .admin-hold-ag{background:var(--u14-fg);color:var(--u14-bg)}
+.admin-hold-cell.ag-open{background:var(--open-bg);color:var(--open-fg)}.admin-hold-cell.ag-open .admin-hold-ag{background:#888;color:#fff}
+.admin-roster{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.admin-roster-head{padding:12px 14px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.admin-roster-title{font-size:14px;font-weight:800}
+.admin-roster-meta{font-size:12px;color:rgba(255,255,255,.65)}
+.admin-roster-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border-top:1px solid var(--border)}
+.admin-roster-player{padding:10px 12px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:9px;cursor:pointer}
+.admin-roster-player:hover{background:#f0f7ff}
+.admin-roster-avatar{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.admin-roster-name{font-size:12px;font-weight:700;color:var(--text)}
+.admin-roster-detail{font-size:10px;color:var(--muted);margin-top:1px}
+.admin-roster-empty{padding:14px;color:var(--muted);font-size:12px}
+.upload-status{font-size:12px;color:var(--muted)}
+@media(max-width:800px){
+  .hdr{padding:14px 16px}
+  .warn-bar{padding:7px 16px}
+  .upload-bar{padding:8px 16px}
+  .extra-hold-bar{padding:6px 16px}
+  .extra-hold-buttons{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .extra-hold-buttons .custom-hold-btn{flex:0 0 auto;white-space:nowrap}
+  .admin-schedule{max-width:none}
+  .admin-schedule-body{padding:10px}
+  .admin-time-label{width:52px}
+  .admin-holds-row{gap:6px}
+  .admin-hold-cell{min-height:76px;padding:7px 4px}
+}
+@media(max-width:600px){
+  .layout{grid-template-columns:1fr;height:auto}
+  .sidebar{max-height:220px}
+}
+#pw-screen{position:fixed;inset:0;z-index:9999;background:#1B3A5C;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0}
+.pw-card{background:#fff;border-radius:16px;padding:40px 36px 32px;width:340px;max-width:90vw;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center}
+.pw-logo{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+.pw-title{font-size:20px;font-weight:700;color:#1B3A5C;margin-bottom:4px}
+.pw-sub{font-size:13px;color:#9ca3af;margin-bottom:28px}
+.pw-label{display:block;font-size:12px;font-weight:600;color:#374151;text-align:left;margin-bottom:6px}
+.pw-input{width:100%;padding:12px 16px;font-size:16px;letter-spacing:.15em;border:2px solid #e5e7eb;border-radius:10px;outline:none;text-align:center;color:#1B3A5C;transition:border-color .15s;margin-bottom:16px}
+.pw-input:focus{border-color:#2E6DA4}
+.pw-input.shake{animation:shake .35s ease;border-color:#ef4444}
+.pw-btn{width:100%;padding:13px;background:#1B3A5C;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+.pw-btn:hover{background:#2E6DA4}
+.pw-error{font-size:12px;color:#ef4444;margin-top:10px;min-height:18px}
+.pw-footer{font-size:11px;color:rgba(255,255,255,.4);margin-top:20px}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+</style>
+</head>
+<body>
+
+<div id="pw-screen">
+  <div class="pw-card">
+    <div class="pw-logo">Taarbæk Tennis Klub</div>
+    <div class="pw-title">Admin – Holdtildeling</div>
+    <div class="pw-sub">Kun for Jacob · Sommertræning 2026</div>
+    <label class="pw-label" for="pw-field">Password</label>
+    <input type="password" id="pw-field" class="pw-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') checkPw()" autocomplete="current-password">
+    <button class="pw-btn" onclick="checkPw()">Log ind</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+  <div class="pw-footer">TTK Admin · 2026</div>
+</div>
+
+<div id="app-content" style="display:none">
+
+<div class="hdr">
+  <div>
+    <h1>TTK Holdtildeling – Jacob's Adminværktøj</h1>
+    <div class="hdr-sub">Sommertræning 2026 · Klik en spiller → vælg hold → gemmes automatisk i Google Sheets</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-text" id="prog-text">0 / 0 færdige</div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="save-status" id="save-status">Forbinder til Google Sheets…</div>
+  <button class="export-btn" onclick="exportList()" style="margin-left:8px">↓ Eksporter liste</button>
+</div>
+
+<div class="warn-bar">⚠ Jacob's adminværktøj · Tildelinger gemmes automatisk i Google Sheets · Flere hold pr. medlem er nu understøttet</div>
+
+<div class="upload-bar extra-hold-bar">
+  <details class="extra-hold-panel">
+    <summary>
+      <strong>Ekstra hold</strong>
+      <span id="extra-hold-status" class="upload-status"></span>
+    </summary>
+    <div id="extra-hold-buttons" class="extra-hold-buttons"></div>
+  </details>
+</div>
+
+<div class="upload-bar extra-hold-bar">
+  <details class="extra-hold-panel">
+    <summary>
+      <strong>Holdbytte</strong>
+      <span id="swap-request-status" class="upload-status"></span>
+    </summary>
+    <div id="swap-request-list" class="swap-requests"></div>
+  </details>
+</div>
+
+<div class="upload-bar">
+  <input type="file" id="csv-file" accept=".csv">
+  <button class="custom-hold-btn" onclick="uploadCSV()">Upload CSV</button>
+  <span id="upload-status" class="upload-status"></span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-search">
+      <input type="text" id="sidebar-search" placeholder="Søg spiller…" oninput="filterSidebar()">
+      <div class="filter-row">
+  <div class="filter-chip active" onclick="setSideFilter('all',this)">Alle</div>
+  <div class="filter-chip" onclick="setSideFilter('pending',this)">Mangler</div>
+  <div class="filter-chip" onclick="setSideFilter('done',this)">Færdige</div>
+  <div class="filter-chip" onclick="setSideFilter('mismatch',this)">Matcher ikke</div>
+      </div>
+    </div>
+    <div id="player-list"></div>
+  </div>
+  <div class="main" id="main-panel"></div>
+</div>
+
+</div>
+
+<script>
+// ─── KONFIGURATION ───────────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqqmTbi2CcGYpMFF8J_Aat6RxqTR6q7gkF0fe2airnbKfOcPLGrKP6l-AJbKZ1UMo/exec';
+const ADMIN_PASSWORD = 'ttk2026';
+
+// ─── HOLDDATA ────────────────────────────────────────────────────────────────
+const holdInfo = {
+  1:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},2:{day:"Mandag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},3:{day:"Mandag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  4:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},5:{day:"Mandag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},6:{day:"Mandag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  7:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},8:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},9:{day:"Mandag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  10:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},11:{day:"Tirsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},12:{day:"Tirsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  13:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},14:{day:"Tirsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},15:{day:"Tirsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  16:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},17:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},18:{day:"Tirsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  19:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},20:{day:"Onsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},21:{day:"Onsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  22:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},23:{day:"Onsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},24:{day:"Onsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  25:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},26:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},27:{day:"Onsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  28:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},29:{day:"Torsdag",slot:"15:00–16:00",ag:"U8/U10",cl:"ag-u8"},30:{day:"Torsdag",slot:"15:00–16:00",ag:"U10/U12",cl:"ag-u10"},
+  31:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},32:{day:"Torsdag",slot:"16:00–17:00",ag:"U12/U14",cl:"ag-u12"},33:{day:"Torsdag",slot:"16:00–17:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  34:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},35:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},36:{day:"Torsdag",slot:"17:00–18:00",ag:"U14/Ungsenior",cl:"ag-u14"},
+  37:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},38:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},39:{day:"Fredag",slot:"15:00–16:00",ag:"Open",cl:"ag-open"},
+  40:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},41:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},42:{day:"Fredag",slot:"16:00–17:00",ag:"Open",cl:"ag-open"},
+};
+
+const sched = {
+  man:{slots:[{t:"15:00–16:00",h:[1,2,3]},{t:"16:00–17:00",h:[4,5,6]},{t:"17:00–18:00",h:[7,8,9]}]},
+  tir:{slots:[{t:"15:00–16:00",h:[10,11,12]},{t:"16:00–17:00",h:[13,14,15]},{t:"17:00–18:00",h:[16,17,18]}]},
+  ons:{slots:[{t:"15:00–16:00",h:[19,20,21]},{t:"16:00–17:00",h:[22,23,24]},{t:"17:00–18:00",h:[25,26,27]}]},
+  tor:{slots:[{t:"15:00–16:00",h:[28,29,30]},{t:"16:00–17:00",h:[31,32,33]},{t:"17:00–18:00",h:[34,35,36]}]},
+  fre:{slots:[{t:"15:00–16:00",h:[37,38,39]},{t:"16:00–17:00",h:[40,41,42]}]},
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let players = [];
+let extraHolds = [];
+let extraHoldOptions = [];
+let swapRequests = [];
+let currentIdx = null;
+let sideFilter = 'all';
+let currentScheduleDay = 'man';
+let selectedScheduleHold = null;
+
+// ─── HJÆLPEFUNKTIONER ────────────────────────────────────────────────────────
+function initials(n){ return (n||'').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function timerLabel(t){
+  t = Number(t) || 1;
+  return t === 1 ? '1 time/uge' : `${t} timer/uge`;
+}
+
+function normalizePlayer(raw) {
+  return {
+    n:  String(raw.n || raw.name || '').trim(),
+    t:  Number(raw.t || raw.timer || raw.hours || 1),
+    p:  Number(raw.p || raw.price || raw.pris || 0),
+    h:  Array.isArray(raw.h) ? raw.h : [],
+    dw: Array.isArray(raw.dw) ? raw.dw : [],
+    a:  Array.isArray(raw.a) ? raw.a : [],
+    u:  Boolean(raw.u || raw.unplaced || false),
+    note: raw.note ? String(raw.note) : '',
+    age: raw.age || '',
+    birthdate: raw.birthdate ? String(raw.birthdate) : '',
+    level: raw.level ? String(raw.level) : ''
+  };
+}
+
+function getWishHolds(p) {
+  if (p.h && p.h.length > 0) return p.h;
+
+  const res = [];
+  (p.dw || []).forEach(key => {
+    const [dk, slot] = key.split(/-(?=\d)/);
+    const d = sched[dk];
+    if (!d) return;
+    const s = d.slots.find(s => s.t === slot);
+    if (!s) return;
+    s.h.forEach(h => { if (!res.includes(h)) res.push(h); });
+  });
+  return res;
+}
+
+function getExtraHoldsForBaseHold(baseHold) {
+  const prefix = String(baseHold) + '.';
+
+  return extraHolds
+    .filter(h => String(h).startsWith(prefix))
+    .sort((a, b) => Number(a) - Number(b));
+}
+
+function getHoldInfoForHold(holdNo) {
+  const direct = holdInfo[holdNo];
+  if (direct) return direct;
+
+  const baseNr = Math.floor(Number(holdNo));
+  return holdInfo[baseNr] || null;
+}
+
+function sameBaseHold(a, b) {
+  return Math.floor(Number(a)) === Math.floor(Number(b));
+}
+
+function dayToCode(day){
+  const map = {
+    "Mandag": "man",
+    "Tirsdag": "tir",
+    "Onsdag": "ons",
+    "Torsdag": "tor",
+    "Fredag": "fre"
+  };
+  return map[day] || "";
+}
+
+function holdToWishKey(holdNo){
+  const info = getHoldInfoForHold(holdNo);
+  if (!info) return "";
+  return dayToCode(info.day) + "-" + info.slot;
+}
+
+function assignedOutsideWishes(p){
+  const assigned = Array.isArray(p.a) ? p.a : [];
+  const wishes = Array.isArray(p.dw) ? p.dw : [];
+
+  if (!assigned.length) return false;
+  if (!wishes.length) return false;
+
+  return assigned.some(holdNo => {
+    const key = holdToWishKey(holdNo);
+    return key && !wishes.includes(key);
+  });
+}
+
+function getMismatchHolds(p){
+  const assigned = Array.isArray(p.a) ? p.a : [];
+  const wishes = Array.isArray(p.dw) ? p.dw : [];
+
+  if (!assigned.length || !wishes.length) return [];
+
+  return assigned.filter(holdNo => {
+    const key = holdToWishKey(holdNo);
+    return key && !wishes.includes(key);
+  });
+}
+
+function formatWishKey(key){
+  const parts = key.split(/-(?=\d)/);
+  const dk = parts[0];
+  const slot = parts[1] || "";
+
+  const dayMap = {
+    man: "Mandag",
+    tir: "Tirsdag",
+    ons: "Onsdag",
+    tor: "Torsdag",
+    fre: "Fredag"
+  };
+
+  return (dayMap[dk] || dk) + " · " + slot;
+}
+
+function holdCounts() {
+  const c = {};
+  for (let i = 1; i <= 42; i++) c[i] = 0;
+
+  players.forEach(p => {
+    (Array.isArray(p.a) ? p.a : []).forEach(h => {
+      const key = String(h);
+      c[key] = (c[key] || 0) + 1;
+    });
+  });
+
+  return c;
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('save-status');
+  el.textContent = msg;
+  el.className = 'save-status ' + (cls || '');
+}
+
+function setUploadStatus(msg, isError=false) {
+  const el = document.getElementById('upload-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#b91c1c' : '#6b7280';
+}
+
+function renderExtraHoldButtons() {
+  const wrap = document.getElementById('extra-hold-buttons');
+  const status = document.getElementById('extra-hold-status');
+
+  if (!wrap || !status) return;
+
+  wrap.innerHTML = '';
+
+  if (!extraHoldOptions.length) {
+    status.textContent = 'Ingen ekstrahold oprettet';
+    status.style.color = '#6b7280';
+    return;
+  }
+
+  extraHoldOptions
+    .sort((a, b) => Number(a.hold) - Number(b.hold))
+    .forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'custom-hold-btn';
+      btn.textContent = item.active ? `Hold ${item.hold} aktivt` : `Aktivér hold ${item.hold}`;
+      btn.style.background = item.active ? '#16a34a' : '#1B3A5C';
+      btn.style.color = '#fff';
+      btn.onclick = () => toggleExtraHold(item.hold);
+
+      wrap.appendChild(btn);
+    });
+
+  const activeCount = extraHoldOptions.filter(x => x.active).length;
+  status.textContent = `${activeCount} ekstrahold aktive`;
+  status.style.color = activeCount ? '#15803d' : '#6b7280';
+}
+
+async function toggleExtraHold(hold) {
+  const holdStr = String(hold).trim();
+  const isActive = extraHolds.includes(holdStr);
+
+  setUploadStatus(isActive ? `Deaktiverer hold ${holdStr}...` : `Aktiverer hold ${holdStr}...`);
+
+  console.log('TOGGLE PAYLOAD:', {
+  type: 'toggleExtraHold',
+  hold: holdStr,
+  active: !isActive
+});
+
+  try {
+    const url = `${SCRIPT_URL}?action=toggleExtraHold&hold=${encodeURIComponent(holdStr)}&active=${!isActive}`;
+    const res = await fetch(url);
+    console.log('TOGGLE URL:', url);
+    console.log('TOGGLE STATUS:', res.status);
+
+    const data = await res.json();
+    console.log('TOGGLE RESPONSE:', data);
+
+    if (!data.ok) {
+      throw new Error(data.error || 'Kunne ikke opdatere ekstrahold');
+    }
+
+    if (data.active) {
+     if (!extraHolds.includes(holdStr)) extraHolds.push(holdStr);
+    } else {
+    extraHolds = extraHolds.filter(h => h !== holdStr);
+    }
+
+const option = extraHoldOptions.find(x => x.hold === holdStr);
+if (option) {
+  option.active = data.active;
+} else {
+  extraHoldOptions.push({
+    hold: holdStr,
+    active: data.active
+  });
+}
+
+    renderExtraHoldButtons();
+
+    if (currentIdx !== null) {
+      renderMain();
+    }
+
+    setUploadStatus(`✓ Hold ${holdStr} er ${data.active ? 'aktivt' : 'inaktivt'}`);
+
+  } catch (err) {
+    console.error(err);
+    setUploadStatus('Fejl ved opdatering af ekstrahold', true);
+  }
+}
+
+function getDisplayHoldNo(holdNo) { return String(Math.floor(Number(holdNo))); }
+function getHoldKeysForDisplayHold(holdNo) {
+  const base = getDisplayHoldNo(holdNo);
+  const keys = new Set([base]);
+  getExtraHoldsForBaseHold(base).forEach(h => keys.add(String(h)));
+  players.forEach(p => (Array.isArray(p.a) ? p.a : []).forEach(h => {
+    if (getDisplayHoldNo(h) === base) keys.add(String(h));
+  }));
+  return Array.from(keys).sort((a,b) => Number(a) - Number(b));
+}
+function getHoldCapacity(holdNo) { return getHoldKeysForDisplayHold(holdNo).length * 6; }
+function getPlayersForDisplayHold(holdNo) {
+  const base = getDisplayHoldNo(holdNo);
+  return players.filter(p => (Array.isArray(p.a) ? p.a : []).some(h => getDisplayHoldNo(h) === base));
+}
+function setAdminScheduleDay(day) {
+  currentScheduleDay = day;
+  selectedScheduleHold = null;
+  renderScheduleDashboard();
+}
+function openAdminScheduleHold(holdNo) {
+  selectedScheduleHold = String(holdNo);
+  renderScheduleDashboard();
+}
+function selectPlayerByName(name) {
+  const idx = players.findIndex(p => cleanNameKey(p.n) === cleanNameKey(name));
+  if (idx > -1) selectPlayer(idx);
+}
+function renderScheduleDashboard() {
+  const main = document.getElementById('main-panel');
+  if (!main) return;
+  const day = sched[currentScheduleDay] || sched.man;
+  const dayLabels = { man:'Man', tir:'Tir', ons:'Ons', tor:'Tor', fre:'Fre' };
+  const dayNames = { man:'Mandag', tir:'Tirsdag', ons:'Onsdag', tor:'Torsdag', fre:'Fredag' };
+  const tabs = Object.keys(sched).map(key => `<button class="admin-day-tab ${key===currentScheduleDay?'active':''}" onclick="setAdminScheduleDay('${key}')">${dayLabels[key]}</button>`).join('');
+  const rows = day.slots.map(slot => {
+    const parts = slot.t.split('–');
+    const cells = slot.h.map(nr => {
+      const info = getHoldInfoForHold(nr);
+      if (!info) return '';
+      const playersOnHold = getPlayersForDisplayHold(nr);
+      const capacity = getHoldCapacity(nr);
+      const active = String(selectedScheduleHold || '') === String(nr);
+      return `<div class="admin-hold-cell ${info.cl} ${active?'active':''}" onclick="openAdminScheduleHold('${nr}')">
+        <div class="admin-hold-label">Hold</div>
+        <div class="admin-hold-num">${nr}</div>
+        <div class="admin-hold-count">${playersOnHold.length}/${capacity}</div>
+        <div class="admin-hold-ag">${info.ag}</div>
+      </div>`;
+    }).join('');
+    return `<div class="admin-time-row"><div class="admin-time-label"><span>${parts[0] || ''}</span><span>${parts[1] || ''}</span></div><div class="admin-holds-row">${cells}</div></div>`;
+  }).join('');
+  const rosterHold = selectedScheduleHold || (day.slots[0] && day.slots[0].h[0]);
+  const rosterInfo = getHoldInfoForHold(rosterHold);
+  const rosterPlayers = rosterHold ? getPlayersForDisplayHold(rosterHold) : [];
+  const rosterCapacity = rosterHold ? getHoldCapacity(rosterHold) : 0;
+  const roster = rosterHold ? `<div class="admin-roster">
+    <div class="admin-roster-head"><div><div class="admin-roster-title">Hold ${rosterHold}</div><div class="admin-roster-meta">${rosterInfo ? rosterInfo.day + ' · ' + rosterInfo.slot + ' · ' + rosterInfo.ag : ''}</div></div><div class="admin-roster-meta">${rosterPlayers.length}/${rosterCapacity} spillere</div></div>
+    <div class="admin-roster-list">${rosterPlayers.length ? rosterPlayers.map(p => `<div class="admin-roster-player" onclick="selectPlayer(${players.indexOf(p)})"><div class="admin-roster-avatar">${initials(p.n)}</div><div><div class="admin-roster-name">${p.n}</div><div class="admin-roster-detail">${p.age ? p.age + ' år · ' : ''}${(Array.isArray(p.a) ? p.a : []).map(h => 'Hold ' + h).join(', ')}</div></div></div>`).join('') : '<div class="admin-roster-empty">Ingen spillere på dette hold endnu</div>'}</div>
+  </div>` : '';
+  main.innerHTML = `<div class="admin-schedule"><div class="admin-schedule-head"><div><div class="admin-schedule-title">Ugeskema</div><div class="admin-schedule-sub">${dayNames[currentScheduleDay]} · klik et hold for at se spillere</div></div></div><div class="admin-schedule-card"><div class="admin-day-tabs">${tabs}</div><div class="admin-schedule-body">${rows}</div></div>${roster}</div>`;
+}
+function formatSwapHoldLabel(hold) {
+  const info = getHoldInfoForHold(hold);
+  return info ? `Hold ${hold} · ${info.day} · ${info.slot}` : `Hold ${hold}`;
+}
+
+function renderSwapRequests() {
+  const wrap = document.getElementById('swap-request-list');
+  const status = document.getElementById('swap-request-status');
+  if (!wrap || !status) return;
+
+  const pending = Array.isArray(swapRequests) ? swapRequests.filter(r => (r.status || 'pending') === 'pending') : [];
+  status.textContent = pending.length ? `${pending.length} afventer` : 'Ingen afventer';
+  status.style.color = pending.length ? '#b45309' : '#6b7280';
+  wrap.innerHTML = '';
+
+  if (!pending.length) {
+    wrap.innerHTML = '<div class="swap-empty">Ingen holdbytteanmodninger lige nu</div>';
+    return;
+  }
+
+  pending.forEach(req => {
+    const row = document.createElement('div');
+    row.className = 'swap-request';
+    row.innerHTML = `
+      <div class="swap-request-main">
+        <div class="swap-request-name">${req.name}</div>
+        <div class="swap-request-meta">Fra ${formatSwapHoldLabel(req.fromHold)}<br>Til ${formatSwapHoldLabel(req.toHold)}</div>
+      </div>
+      <div class="swap-request-actions">
+        <button class="custom-hold-btn" onclick="reviewSwapRequest('${req.id}', 'approved')">Godkend</button>
+        <button class="custom-hold-btn" style="background:#fee2e2;color:#b91c1c" onclick="reviewSwapRequest('${req.id}', 'rejected')">Afvis</button>
+      </div>`;
+    wrap.appendChild(row);
+  });
+}
+
+async function reviewSwapRequest(id, decision) {
+  setStatus(decision === 'approved' ? 'Godkender holdbytte…' : 'Afviser holdbytte…', 'saving');
+
+  try {
+    const url = `${SCRIPT_URL}?action=reviewSwap&id=${encodeURIComponent(id)}&decision=${encodeURIComponent(decision)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Kunne ikke behandle anmodning');
+
+    swapRequests = swapRequests.filter(r => r.id !== id);
+    renderSwapRequests();
+    await loadFromSheet();
+    setStatus(decision === 'approved' ? '✓ Holdbytte godkendt' : '✓ Holdbytte afvist', 'saved');
+  } catch (e) {
+    console.error(e);
+    setStatus('Fejl – kunne ikke behandle holdbytte', 'error');
+    alert(e.message || 'Kunne ikke behandle holdbytte');
+  }
+}
+
+// ─── PROGRESS ────────────────────────────────────────────────────────────────
+function updateProgress() {
+  const total = players.length;
+  const done  = players.filter(p => Array.isArray(p.a) && p.a.length >= p.t).length;
+  document.getElementById('prog-text').textContent = `${done} / ${total} færdige`;
+  document.getElementById('prog-bar').style.width = total ? `${Math.round(done/total*100)}%` : '0%';
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const q    = (document.getElementById('sidebar-search').value||'').toLowerCase();
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+
+  players.forEach((p, i) => {
+    const assigned  = Array.isArray(p.a) ? p.a : [];
+    const isDone    = assigned.length >= p.t;
+    const isPartial = assigned.length > 0 && assigned.length < p.t;
+
+    if (sideFilter === 'pending' && isDone) return;
+if (sideFilter === 'done'    && !isDone) return;
+if (sideFilter === 'mismatch' && !assignedOutsideWishes(p)) return;
+    if (q && !p.n.toLowerCase().includes(q)) return;
+
+    const div = document.createElement('div');
+    div.className = 'player-item' + (i===currentIdx?' active':'') + (assigned.length>0?' assigned':'');
+
+    let status    = 'pending';
+    let badgeText = 'Ikke tildelt';
+    if (p.u)           { status='unplaced'; badgeText='Ingen ønsker'; }
+    else if (isDone)   { status='assigned'; badgeText=`Hold ${assigned.join(', ')}`; }
+    else if (isPartial){ status='pending';  badgeText=`${assigned.length}/${p.t} hold`; }
+
+    div.innerHTML = `
+      <div class="pi-avatar ${isDone?'done':p.u?'unplaced':''}">${initials(p.n)}</div>
+      <div style="flex:1;min-width:0">
+       <div class="pi-name">${p.n}</div>
+
+<div style="font-size:10px;color:var(--muted);margin-top:2px">
+
+  ${p.age ? p.age + ' år' : 'Alder ukendt'}
+
+</div>
+
+<div style="margin-top:3px"><span class="pi-badge ${status}">${badgeText}</span></div>
+
+${assignedOutsideWishes(p) ? '<div style="font-size:9px;font-weight:800;color:#b91c1c;background:#fee2e2;border-radius:8px;padding:2px 6px;display:inline-block;margin-top:4px">⚠ Matcher ikke ønsker</div>' : ''} 
+ </div>`;
+
+    div.onclick = () => selectPlayer(i);
+    list.appendChild(div);
+  });
+}
+
+function filterSidebar() { renderSidebar(); }
+
+function setSideFilter(v, btn) {
+  sideFilter = v;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderSidebar();
+}
+
+// ─── MAIN PANEL ──────────────────────────────────────────────────────────────
+function selectPlayer(idx) {
+  currentIdx = idx;
+  renderSidebar();
+  renderMain();
+}
+
+function showScheduleDashboard() {
+  currentIdx = null;
+  renderSidebar();
+  renderScheduleDashboard();
+}
+
+function renderMain() {
+  const p          = players[currentIdx];
+  const wishHolds  = getWishHolds(p);
+  const counts     = holdCounts();
+  const main       = document.getElementById('main-panel');
+  if (!Array.isArray(p.a)) p.a = [];
+
+  const assigned    = p.a;
+  const maxHolds    = p.t;
+  const assignedStr = assigned.length
+  ? assigned.map(nr => { const info = getHoldInfoForHold(nr); return info ? `Hold ${nr} · ${info.day} · ${info.slot}` : null; }).filter(Boolean).join('<br>') || null
+  : null;
+
+ let html = `
+  <div class="detail-header">
+    <div class="dh-avatar">${initials(p.n)}</div>
+    <div>
+      <div class="dh-name">${p.n}</div>
+      <div class="dh-meta">${timerLabel(p.t)} · ${p.p} kr/sæson · Skal have ${maxHolds} hold${p.age ? ' · ' + p.age + ' år' : ''}</div>
+    </div>
+    <div class="dh-status">
+      <div class="dh-assigned-label">Tildelte hold (${assigned.length}/${maxHolds})</div>
+      <div class="dh-assigned-val ${assigned.length?'':'none'}">${assignedStr||'Ikke tildelt endnu'}</div>
+    </div>
+  </div>`;
+
+html += `
+  <div class="custom-hold">
+    <label>Niveau</label>
+    <select id="level-select" onchange="changeLevel(this.value)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:white;color:var(--navy);font-weight:600">
+      <option value="" ${!p.level ? 'selected' : ''}>Vælg niveau</option>
+      <option value="Begynder" ${p.level === 'Begynder' ? 'selected' : ''}>Begynder</option>
+      <option value="Let øvet" ${p.level === 'Let øvet' ? 'selected' : ''}>Let øvet</option>
+      <option value="Øvet" ${p.level === 'Øvet' ? 'selected' : ''}>Øvet</option>
+      <option value="Meget øvet" ${p.level === 'Meget øvet' ? 'selected' : ''}>Meget øvet</option>
+      <option value="Elite" ${p.level === 'Elite' ? 'selected' : ''}>Elite</option>
+    </select>
+  </div>`;
+
+const mismatchHolds = getMismatchHolds(p);
+
+if (mismatchHolds.length) {
+  html += `
+    <div class="unplaced-note" style="background:#fff7ed;border-color:#fdba74;border-left-color:#f97316">
+      <div class="un-title" style="color:#c2410c">⚠ Tildeling matcher ikke spillerens ønsker</div>
+      <div class="un-body" style="color:#9a3412">
+        Spilleren er tildelt:
+        ${mismatchHolds.map(nr => {
+          const info = getHoldInfoForHold(nr);
+          return info ? 'Hold ' + nr + ' · ' + info.day + ' · ' + info.slot : 'Hold ' + nr;
+        }).join(', ')}.
+        <br><br>
+        Registrerede ønsker:<br>
+        ${(p.dw || []).map(w => '• ' + formatWishKey(w)).join('<br>') || 'Ingen ønsker registreret'}
+      </div>
+    </div>`;
+}
+
+if (p.u || p.note) {
+  html += `<div class="unplaced-note">
+    <div class="un-title">${p.u ? '⚠ Ingen holdønsker registreret' : '📝 Besked fra forældre'}</div>
+    <div class="un-body">${p.u ? p.n + ' har ikke angivet nogen dag eller holdpræference. ' : ''}${p.note || ''}${p.u ? '<br><br>Brug feltet nedenfor til at tildele hold manuelt.' : ''}</div>
+  </div>`;
+  }
+
+  if (wishHolds.length > 0) {
+    html += `<div class="section-title">Spillerens ønskede hold</div><div class="holds-grid">`;
+  const expandedWishHolds = [];
+
+wishHolds.forEach(nr => {
+  expandedWishHolds.push(String(nr));
+
+  const extras = getExtraHoldsForBaseHold(nr);
+
+  extras.forEach(ex => {
+    if (!expandedWishHolds.includes(String(ex))) {
+      expandedWishHolds.push(String(ex));
+    }
+  });
+});
+
+expandedWishHolds.forEach(nr => {
+  const baseNr = Math.floor(Number(nr));
+  const info = holdInfo[baseNr];
+  if (!info) return;
+  const cnt = counts[String(nr)] || 0;
+      const isSelected = assigned.map(String).includes(String(nr));
+      const canAddMore = assigned.length < maxHolds;
+      const canReplaceSameBase = !isSelected && !canAddMore && assigned.some(h => sameBaseHold(h, nr));
+      const isFull     = cnt >= 6 && !isSelected;
+      const isDisabled = (!isSelected && !canAddMore && !canReplaceSameBase) || isFull;
+
+      html += `
+        <div class="hold-option ${info.cl} ${isSelected?'selected':''} ${isDisabled?'full':''}" onclick="toggleHold('${nr}')">
+          <div class="hold-opt-color"></div>
+          <div class="hold-opt-num"><span>Hold</span>${nr}</div>
+          <div class="hold-opt-body">
+            <div class="hold-opt-daytime">
+              <div class="hold-opt-day">${info.day}</div>
+              <div class="hold-opt-time">${info.slot}</div>
+            </div>
+            <span class="hold-opt-ag">${info.ag}</span>
+            <div class="hold-opt-count"><strong>${cnt}/6</strong>spillere</div>
+          </div>
+          <div class="selected-tick">✓</div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="custom-hold">
+    <label>Tildel et andet hold manuelt (hold 1–42 eller ekstrahold fx 2.5)</label>
+    <div class="custom-hold-row">
+      <input type="text" id="custom-hold-input" inputmode="decimal" placeholder="fx 2.5">
+      <button class="custom-hold-btn" onclick="assignCustom()">Tildel</button>
+      ${assigned.length?`<button class="custom-hold-btn" style="background:#fee2e2;color:#b91c1c;margin-left:auto" onclick="clearAssignment()">Fjern alle</button>`:''}
+    </div>
+  </div>`;
+
+  const hasPrev = currentIdx > 0;
+  const hasNext = currentIdx < players.length - 1;
+  html += `<div class="nav-row">
+    <button class="nav-btn" onclick="selectPlayer(${currentIdx-1})" ${hasPrev?'':'disabled'}>← Forrige</button>
+    <button class="nav-btn primary" onclick="selectPlayer(${currentIdx+1})" ${hasNext?'':'disabled'}>Næste →</button>
+  </div>`;
+
+  main.innerHTML = html;
+}
+
+// ─── HOLD-TILDELING ──────────────────────────────────────────────────────────
+function toggleHold(nr) {
+  const p      = players[currentIdx];
+  if (!Array.isArray(p.a)) p.a = [];
+  const holdStr = String(nr);
+  const counts = holdCounts();
+  const idx    = p.a.map(String).indexOf(holdStr);
+
+  if (idx > -1) {
+    p.a.splice(idx, 1);
+  } else {
+    if ((counts[holdStr]||0) >= 6) return;
+
+    if (p.a.length >= p.t) {
+      const replaceIdx = p.a.findIndex(h => sameBaseHold(h, holdStr));
+      if (replaceIdx === -1) return;
+      p.a[replaceIdx] = holdStr;
+    } else {
+      p.a.push(holdStr);
+    }
+
+    p.a.sort((a,b) => Number(a)-Number(b));
+  }
+
+  updateProgress(); renderSidebar(); renderMain();
+  saveToSheet(p.n, p.a);
+}
+
+function assignCustom() {
+  const input = document.getElementById('custom-hold-input');
+  const val = String(input.value || '').trim().replace(',', '.');
+  const n = Number(val);
+  if (!val || isNaN(n) || n < 1 || n > 42 || !getHoldInfoForHold(val)) {
+    alert('Angiv et holdnummer mellem 1 og 42, fx 2 eller 2.5');
+    return;
+  }
+
+  const p      = players[currentIdx];
+  if (!Array.isArray(p.a)) p.a = [];
+  if (p.a.map(String).includes(val))   { alert('Holdet er allerede valgt'); return; }
+
+  const counts = holdCounts();
+  if ((counts[val]||0) >= 6) { alert('Holdet er fyldt op'); return; }
+
+  if (p.a.length >= p.t) {
+    const replaceIdx = p.a.findIndex(h => sameBaseHold(h, val));
+    if (replaceIdx === -1) { alert(`Spilleren må højst have ${p.t} hold`); return; }
+    p.a[replaceIdx] = val;
+  } else {
+    p.a.push(val);
+  }
+
+  p.a.sort((a,b) => Number(a)-Number(b));
+  updateProgress(); renderSidebar(); renderMain();
+  saveToSheet(p.n, p.a);
+}
+
+function clearAssignment() {
+  players[currentIdx].a = [];
+  updateProgress(); renderSidebar(); renderMain();
+  saveToSheet(players[currentIdx].n, []);
+}
+function cleanNameKey(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/æ/g, 'ae')
+    .replace(/ø/g, 'oe')
+    .replace(/å/g, 'aa')
+    .replace(/é/g, 'e');
+}
+
+// ─── API-KALD (GET-baseret) ───────────────────────────────────────────────────
+async function loadFromSheet() {
+  setStatus('Henter data…', 'saving');
+  try {
+    const res  = await fetch(SCRIPT_URL);
+    const data = await res.json();
+
+    if (!data.ok || !Array.isArray(data.players) || !data.assignments) {
+      throw new Error(data.error || 'Ugyldigt svar fra script');
+    }
+
+    players = data.players.map(normalizePlayer).filter(p => p.n);
+    extraHolds = Array.isArray(data.extraHolds)
+  ? data.extraHolds.map(x => String(x).trim()).filter(Boolean)
+  : [];
+
+    extraHoldOptions = Array.isArray(data.extraHoldOptions)
+    ? data.extraHoldOptions
+        .map(x => ({
+          hold: String(x.hold || '').trim(),
+          active: Boolean(x.active)
+        }))
+        .filter(x => x.hold)
+    : [];
+
+    swapRequests = Array.isArray(data.swapRequests)
+      ? data.swapRequests.map(x => ({
+          id: String(x.id || '').trim(),
+          name: String(x.name || '').trim(),
+          fromHold: String(x.fromHold || '').trim(),
+          toHold: String(x.toHold || '').trim(),
+          status: String(x.status || 'pending').trim() || 'pending'
+        })).filter(x => x.id && x.name)
+      : [];
+
+    const assignmentMap = {};
+
+Object.keys(data.assignments).forEach(name => {
+  assignmentMap[cleanNameKey(name)] = data.assignments[name];
+});
+
+players.forEach(p => {
+  const raw = assignmentMap[cleanNameKey(p.n)];
+
+  if (typeof raw === 'string' && raw.trim()) {
+    p.a = raw
+      .replace(/\s/g,'')
+      .split(/[;,]/)
+      .map(x => String(x).trim())
+      .filter(x => {
+        const n = Number(x);
+        return !isNaN(n) && n >= 1 && n <= 42;
+      })
+      .sort((a, b) => Number(a) - Number(b));
+  } else {
+    p.a = [];
+  }
+});
+
+    currentIdx = null;
+    updateProgress();
+    renderSidebar();
+    renderExtraHoldButtons();
+    renderSwapRequests();
+    renderScheduleDashboard();
+
+    setStatus(`✓ ${players.length} spillere hentet`, 'saved');
+    setTimeout(() => {
+      const done = players.filter(p=>Array.isArray(p.a)&&p.a.length>0).length;
+      setStatus(`${done} / ${players.length} har mindst ét hold`, 'saved');
+    }, 2000);
+
+  } catch(e) {
+    console.error(e);
+    setStatus('Kunne ikke hente data – ' + e.message, 'error');
+  }
+}
+
+async function saveToSheet(name, holds) {
+  setStatus('Gemmer…', 'saving');
+  try {
+    const holdsString = Array.isArray(holds) ? holds.join(',') : String(holds||'');
+    const url = `${SCRIPT_URL}?action=save&name=${encodeURIComponent(name)}&holds=${encodeURIComponent(holdsString)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error||'Ukendt fejl');
+
+    setStatus('✓ Gemt', 'saved');
+    setTimeout(() => {
+      const done = players.filter(p=>Array.isArray(p.a)&&p.a.length>0).length;
+      setStatus(`${done} / ${players.length} har mindst ét hold`, 'saved');
+    }, 1500);
+
+  } catch(e) {
+    console.error(e);
+    setStatus('Fejl – kunne ikke gemme', 'error');
+  }
+}
+async function saveLevelToSheet(name, level) {
+  setStatus('Gemmer niveau…', 'saving');
+
+  try {
+    const url = `${SCRIPT_URL}?action=saveLevel&name=${encodeURIComponent(name)}&level=${encodeURIComponent(level)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Ukendt fejl');
+
+    setStatus('✓ Niveau gemt', 'saved');
+  } catch(e) {
+    console.error(e);
+    setStatus('Fejl – kunne ikke gemme niveau', 'error');
+  }
+}
+function changeLevel(level) {
+  const p = players[currentIdx];
+  if (!p) return;
+
+  p.level = level;
+  renderSidebar();
+  saveLevelToSheet(p.n, level);
+}
+function uploadCSV() {
+  const file = document.getElementById('csv-file')?.files?.[0];
+  if (!file) {
+    setUploadStatus('Vælg en CSV-fil først', true);
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = async function(e) {
+    try {
+      setUploadStatus('Uploader...');
+
+      let text = e.target.result;
+
+      // Hvis vi ser tegn på encoding-fejl → læs igen som Windows-1252
+      if (text.includes('�')) {
+        const reader2 = new FileReader();
+
+        reader2.onload = async function(e2) {
+          await sendCSV(e2.target.result);
+        };
+
+        reader2.readAsText(file, 'windows-1252');
+        return;
+      }
+
+      await sendCSV(text);
+
+    } catch (err) {
+      console.error(err);
+      setUploadStatus('Fejl: ' + err.message, true);
+      setStatus('CSV upload fejlede', 'error');
+    }
+  };
+
+  reader.readAsText(file, 'UTF-8');
+}
+  
+async function sendCSV(text) {
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ type: 'importCSV', data: text })
+  });
+
+  const result = await res.json();
+
+  if (!result.ok) throw new Error(result.error || 'Import fejlede');
+
+  setUploadStatus(`✓ Importeret${result.count ? ' · ' + result.count + ' rækker' : ''}`);
+  setStatus('CSV importeret', 'saved');
+
+  await loadFromSheet();
+}
+
+// ─── EKSPORT ─────────────────────────────────────────────────────────────────
+function exportList() {
+  const assigned   = players.filter(p=>Array.isArray(p.a)&&p.a.length>0).sort((a,b)=>(a.a[0]||999)-(b.a[0]||999));
+  const unassigned = players.filter(p=>!Array.isArray(p.a)||p.a.length===0);
+
+  let lines = [
+    'TTK Holdtildeling – Sommertræning 2026',
+    'Eksporteret: ' + new Date().toLocaleDateString('da-DK'),
+    '',
+    `=== TILDELTE SPILLERE (${assigned.length} stk) ===`,
+    ''
+  ];
+  assigned.forEach(p => lines.push(p.n + ' → ' + p.a.map(h=>'Hold '+h).join(', ')));
+
+  if (unassigned.length > 0) {
+    lines.push('', `=== IKKE TILDELT ENDNU (${unassigned.length} stk) ===`);
+    unassigned.forEach(p => lines.push('  - ' + p.n));
+  }
+
+  const blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'TTK_Holdtildeling_' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+}
+
+// ─── LOGIN ───────────────────────────────────────────────────────────────────
+function checkPw() {
+  const val    = document.getElementById('pw-field').value;
+  const errEl  = document.getElementById('pw-error');
+  if (val === ADMIN_PASSWORD) {
+    document.getElementById('pw-screen').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    loadFromSheet();
+  } else {
+    const inp = document.getElementById('pw-field');
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+    inp.value = '';
+    errEl.textContent = 'Forkert password – prøv igen';
+    setTimeout(() => inp.classList.remove('shake'), 400);
+    inp.focus();
+  }
+}
+
+document.getElementById('pw-field').focus();
+</script>
+</body>
+</html>
