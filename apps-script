@@ -1,0 +1,821 @@
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+
+  if (p.action === 'toggleExtraHold') {
+    return handleExtraHoldToggle_({
+      hold: p.hold,
+      active: p.active === 'true'
+    });
+  }
+
+  if (p.action === 'save') {
+    return handleAssignmentSave_({
+      name: p.name,
+      holds: p.holds || ''
+    });
+  }
+
+  if (p.action === 'saveLevel') {
+    return handleLevelSave_({
+      name: p.name,
+      level: p.level || ''
+    });
+  }
+
+  if (p.action === 'swapRequest') {
+    return handleSwapRequest_({
+      name: p.name,
+      fromHold: p.fromHold,
+      toHold: p.toHold
+    });
+  }
+
+  if (p.action === 'reviewSwap') {
+    return handleSwapReview_({
+      id: p.id,
+      decision: p.decision
+    });
+  }
+
+  if (p.action === 'importCSV') {
+    return handleCsvImport_(p.csv ? decodeURIComponent(p.csv) : '');
+  }
+
+  return buildLoadResponse_();
+}
+
+function doPost(e) {
+  try {
+    const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+
+    if (payload.type === 'load') {
+      return buildLoadResponse_();
+    }
+
+    if (payload.type === 'importCSV') {
+      return handleCsvImport_(payload.data);
+    }
+
+    if (payload.type === 'toggleExtraHold' || payload.hold) {
+      return handleExtraHoldToggle_(payload);
+    }
+
+    if (payload.type === 'saveLevel') {
+      return handleLevelSave_(payload);
+    }
+
+    if (payload.type === 'swapRequest') {
+      return handleSwapRequest_(payload);
+    }
+
+    if (payload.type === 'reviewSwap') {
+      return handleSwapReview_(payload);
+    }
+
+    return handleAssignmentSave_(payload);
+
+  } catch (err) {
+    return jsonOut_({
+      ok: false,
+      error: err.message || 'Unknown error'
+    });
+  }
+}
+
+function buildLoadResponse_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const playersSheet = ss.getSheetByName("Players");
+  const assignmentsSheet = ss.getSheetByName("Assignments");
+  const extraHoldsSheet = ss.getSheetByName("ExtraHolds");
+
+  if (!playersSheet || !assignmentsSheet || !extraHoldsSheet) {
+    return jsonOut_({
+      ok: false,
+      error: "Missing Players, Assignments or ExtraHolds sheet"
+    });
+  }
+
+  const playersData = playersSheet.getDataRange().getValues();
+  const assignmentsData = assignmentsSheet.getDataRange().getValues();
+  const extraHoldsData = extraHoldsSheet.getDataRange().getValues();
+  const swapRequests = getPendingSwapRequests_(ss);
+
+  const players = [];
+
+  for (let i = 1; i < playersData.length; i++) {
+    const row = playersData[i];
+    if (!row[0]) continue;
+
+    players.push({
+      n: String(row[0] || "").trim(),
+      t: Number(row[1]) || 1,
+      p: Number(row[2]) || 0,
+      h: row[3]
+        ? String(row[3]).split(",").map(x => Number(x.trim())).filter(n => !isNaN(n))
+        : [],
+      dw: row[4]
+        ? String(row[4]).split(",").map(x => x.trim()).filter(Boolean)
+        : [],
+      u: String(row[5] || "").toUpperCase() === "TRUE",
+      note: String(row[6] || "").trim(),
+      birthdate: String(row[7] || "").trim(),
+      level: String(row[8] || "").trim(),
+      age: row[9] !== "" && row[9] !== null && row[9] !== undefined
+        ? row[9]
+        : calculateAgeFromDanishDate_(row[7])
+    });
+  }
+
+  const extraHolds = [];
+  const extraHoldOptions = [];
+
+  for (let i = 1; i < extraHoldsData.length; i++) {
+  const row = extraHoldsData[i];
+
+  const hold = String(row[0] || "").trim();
+  const active = String(row[1] || "").toUpperCase() === "TRUE";
+
+  if (hold) {
+    extraHoldOptions.push({
+      hold: hold,
+      active: active
+    });
+
+    if (active) {
+      extraHolds.push(hold);
+    }
+  }
+}
+
+  const assignments = {};
+
+  for (let i = 1; i < assignmentsData.length; i++) {
+    const row = assignmentsData[i];
+    if (!row[0]) continue;
+
+    const name = String(row[0] || "").trim();
+    const holdsText = row[1] !== null && row[1] !== undefined ? String(row[1]).trim() : "";
+    assignments[name] = holdsText;
+  }
+
+  return jsonOut_({
+  ok: true,
+  players: players,
+  assignments: assignments,
+  extraHolds: extraHolds,
+  extraHoldOptions: extraHoldOptions,
+  swapRequests: swapRequests
+});
+}
+
+function handleAssignmentSave_(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Assignments');
+
+  if (!sheet) return jsonOut_({ ok: false, error: 'Assignments sheet not found' });
+
+  const name = String(payload.name || '').trim();
+  const holds = String(payload.holds || '').trim();
+
+  if (!name) return jsonOut_({ ok: false, error: 'Missing name' });
+
+  const values = sheet.getDataRange().getValues();
+  let found = false;
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0] || '').trim() === name) {
+      sheet.getRange(i + 1, 2).setValue(holds);
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) sheet.appendRow([name, holds]);
+
+  return jsonOut_({ ok: true });
+}
+
+function handleLevelSave_(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Players');
+
+  if (!sheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
+
+  ensurePlayersHeaders_(sheet);
+
+  const name = String(payload.name || '').trim();
+  const level = String(payload.level || '').trim();
+
+  if (!name) return jsonOut_({ ok: false, error: 'Missing name' });
+
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0] || '').trim() === name) {
+      sheet.getRange(i + 1, 9).setValue(level);
+      return jsonOut_({ ok: true, name: name, level: level });
+    }
+  }
+
+  return jsonOut_({ ok: false, error: 'Player not found: ' + name });
+}
+
+function handleExtraHoldToggle_(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('ExtraHolds');
+
+  if (!sheet) {
+    return jsonOut_({
+      ok: false,
+      error: 'ExtraHolds sheet not found'
+    });
+  }
+
+  const hold = String(payload.hold || '').trim();
+  const active = Boolean(payload.active);
+
+  if (!hold) {
+    return jsonOut_({
+      ok: false,
+      error: 'Missing hold'
+    });
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  let found = false;
+
+  for (let i = 1; i < values.length; i++) {
+    const existingHold = String(values[i][0] || '').trim();
+
+    if (existingHold === hold) {
+      sheet.getRange(i + 1, 2).setValue(active ? 'TRUE' : 'FALSE');
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    sheet.appendRow([hold, active ? 'TRUE' : 'FALSE']);
+  }
+
+  return jsonOut_({
+  ok: true,
+  hold: hold,
+  active: active,
+  spreadsheetName: ss.getName(),
+  spreadsheetUrl: ss.getUrl()
+});
+}
+
+function handleCsvImport_(csvText) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const playersSheet = ss.getSheetByName('Players');
+
+  if (!playersSheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
+  if (!csvText || !String(csvText).trim()) return jsonOut_({ ok: false, error: 'CSV data is empty' });
+
+  ensurePlayersHeaders_(playersSheet);
+
+  const rows = Utilities.parseCsv(csvText, ';');
+  if (!rows || rows.length < 2) return jsonOut_({ ok: false, error: 'CSV has no data rows' });
+
+  let headerRowIndex = -1;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i].map(x => String(x || '').trim().toLowerCase());
+
+    if (row.includes('navn') || row.includes('name')) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+
+  if (headerRowIndex === -1) {
+    return jsonOut_({ ok: false, error: 'Could not find header row with Navn/Name' });
+  }
+
+  const header = rows[headerRowIndex].map(h => String(h || '').trim().toLowerCase());
+  const sheetLevelTimer = inferTimerFromRowsBeforeHeader_(rows, headerRowIndex);
+
+  const idxNavn       = findHeaderIndex_(header, ['navn', 'name']);
+  const idxMeddelelse = findHeaderIndex_(header, ['meddelelse', 'message', 'besked', 'kommentar', 'comment', 'note']);
+  const idxPris       = findHeaderIndex_(header, ['pris', 'price']);
+  const idxTimer      = findHeaderIndex_(header, ['timer', 't', 'antal timer']);
+  const idxProdukt    = findHeaderIndex_(header, ['produkt', 'product', 'kategori']);
+  const idxBirthdate  = findHeaderIndex_(header, ['fødselsdato', 'fodselsdato', 'birthdate', 'birthday', 'født', 'foedt', 'dato født']);
+  const idxLevel      = findHeaderIndex_(header, ['niveau', 'level']);
+  const idxAssigned   = findHeaderIndex_(header, ['hold', 'assigned teams', 'assignedteams', 'team', 'teams', 'holdnr', 'hold nr']);
+
+  if (idxNavn === -1) return jsonOut_({ ok: false, error: "Could not find 'Navn' column in CSV" });
+
+  const existing = playersSheet.getDataRange().getValues();
+  const existingMap = {};
+
+  for (let i = 1; i < existing.length; i++) {
+    const rowName = String(existing[i][0] || '').trim();
+    if (rowName) existingMap[rowName] = i + 1;
+  }
+
+  let count = 0;
+
+  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const name = String(row[idxNavn] || '').trim();
+    if (!name) continue;
+
+    const meddelelse = idxMeddelelse > -1 ? String(row[idxMeddelelse] || '').trim() : '';
+    const productText = idxProdukt > -1 ? String(row[idxProdukt] || '').trim() : '';
+    const birthdate = idxBirthdate > -1 ? String(row[idxBirthdate] || '').trim() : '';
+    const age = calculateAgeFromDanishDate_(birthdate);
+    const csvLevel = idxLevel > -1 ? String(row[idxLevel] || '').trim() : '';
+
+    const parsed = parseWishData_(meddelelse);
+
+    const rawTimerValue = idxTimer > -1 ? String(row[idxTimer] || '').trim() : '';
+
+    // Timer means purchased/booked weekly training hours.
+    // It must NOT be calculated from availability wishes like "tirsdag 15-17".
+    const timerFromDedicatedColumn = rawTimerValue ? normalizeTimer_(rawTimerValue) : 0;
+    const timerFromProductOrMessage = inferTimerFromText_(productText, meddelelse, rawTimerValue);
+
+    let t = Math.max(timerFromDedicatedColumn, timerFromProductOrMessage, sheetLevelTimer, 1);
+
+    const p = idxPris > -1
+      ? normalizePrice_(row[idxPris])
+      : inferPriceFromTimer_(t);
+
+    let existingRow = null;
+    let existingLevel = '';
+    let existingBirthdate = '';
+    let existingAge = '';
+    let existingHoldWishes = '';
+
+    if (existingMap[name]) {
+      existingRow = playersSheet.getRange(existingMap[name], 1, 1, Math.max(10, playersSheet.getLastColumn())).getValues()[0];
+      existingHoldWishes = String(existingRow[3] || '').trim();
+      existingBirthdate = String(existingRow[7] || '').trim();
+      existingLevel = String(existingRow[8] || '').trim();
+      existingAge = String(existingRow[9] || '').trim();
+    }
+
+    const assignedTeamsFromDedicatedColumn = idxAssigned > -1
+      ? parseAssignedTeamsOnly_(row[idxAssigned])
+      : [];
+
+    const finalHoldWishes = assignedTeamsFromDedicatedColumn.length
+      ? assignedTeamsFromDedicatedColumn.join(',')
+      : existingHoldWishes;
+
+    const finalBirthdate = birthdate || existingBirthdate;
+    const finalLevel = csvLevel || existingLevel;
+    const finalAge = age || existingAge || calculateAgeFromDanishDate_(finalBirthdate);
+
+    const outRow = [
+      name,                         // A Name
+      t,                            // B Timer
+      p,                            // C Price
+      finalHoldWishes,              // D Hold wishes/manual hold field. Preserved unless dedicated hold column exists.
+      parsed.dw.join(','),          // E Day/time wishes
+      parsed.u ? 'TRUE' : 'FALSE',  // F Wish unclear/unplaced flag
+      parsed.note,                  // G Note
+      finalBirthdate,               // H Birthdate
+      finalLevel,                   // I Level
+      finalAge                      // J Age
+    ];
+
+    if (existingMap[name]) {
+      playersSheet.getRange(existingMap[name], 1, 1, outRow.length).setValues([outRow]);
+    } else {
+      playersSheet.appendRow(outRow);
+    }
+
+    count++;
+  }
+
+  return jsonOut_({ ok: true, count: count });
+}
+
+
+function getOrCreateSheet_(ss, name, headers) {
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+
+  const firstRow = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  const hasHeaders = firstRow.some(v => String(v || '').trim());
+  if (!hasHeaders) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  return sheet;
+}
+
+function ensureSwapRequestsSheet_(ss) {
+  return getOrCreateSheet_(ss, 'SwapRequests', [
+    'Id',
+    'Timestamp',
+    'Name',
+    'FromHold',
+    'ToHold',
+    'Status',
+    'DecidedAt'
+  ]);
+}
+
+function getPendingSwapRequests_(ss) {
+  const sheet = ensureSwapRequestsSheet_(ss);
+  const values = sheet.getDataRange().getValues();
+  const requests = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const status = String(row[5] || '').trim().toLowerCase();
+    if (status && status !== 'pending') continue;
+    if (!row[0] || !row[2]) continue;
+
+    requests.push({
+      id: String(row[0] || '').trim(),
+      timestamp: row[1] instanceof Date ? row[1].toISOString() : String(row[1] || ''),
+      name: String(row[2] || '').trim(),
+      fromHold: String(row[3] || '').trim(),
+      toHold: String(row[4] || '').trim(),
+      status: status || 'pending'
+    });
+  }
+
+  return requests;
+}
+
+function parseHoldsList_(value) {
+  if (Array.isArray(value)) {
+    return value.map(x => String(x || '').trim()).filter(Boolean);
+  }
+
+  return String(value || '')
+    .replace(/\s/g, '')
+    .split(/[;,]/)
+    .map(x => String(x || '').trim())
+    .filter(x => {
+      const n = Number(x);
+      return !isNaN(n) && n >= 1 && n <= 42;
+    });
+}
+
+function formatHoldsList_(holds) {
+  return holds
+    .map(x => String(x || '').trim())
+    .filter(Boolean)
+    .sort((a, b) => Number(a) - Number(b))
+    .join(',');
+}
+
+function baseHold_(hold) {
+  return Math.floor(Number(hold));
+}
+
+function getActiveExtraHolds_(ss) {
+  const sheet = ss.getSheetByName('ExtraHolds');
+  if (!sheet) return [];
+
+  const values = sheet.getDataRange().getValues();
+  const holds = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const hold = String(values[i][0] || '').trim();
+    const active = String(values[i][1] || '').toUpperCase() === 'TRUE';
+    if (hold && active) holds.push(hold);
+  }
+
+  return holds;
+}
+
+function getCandidateHoldsForBase_(ss, hold) {
+  const base = String(baseHold_(hold));
+  const result = [base];
+  getActiveExtraHolds_(ss).forEach(extra => {
+    if (String(extra).startsWith(base + '.') && !result.includes(String(extra))) {
+      result.push(String(extra));
+    }
+  });
+  return result.sort((a, b) => Number(a) - Number(b));
+}
+
+function chooseAvailableHoldForBase_(ss, targetBase, playerName) {
+  const sheet = ss.getSheetByName('Assignments');
+  if (!sheet) throw new Error('Assignments sheet not found');
+
+  const candidates = getCandidateHoldsForBase_(ss, targetBase);
+  const counts = {};
+  candidates.forEach(h => counts[h] = 0);
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    const name = String(values[i][0] || '').trim();
+    if (!name || name === playerName) continue;
+
+    parseHoldsList_(values[i][1]).forEach(hold => {
+      const key = String(hold);
+      if (counts[key] !== undefined) counts[key]++;
+    });
+  }
+
+  for (let i = 0; i < candidates.length; i++) {
+    const hold = candidates[i];
+    if ((counts[hold] || 0) < 6) return hold;
+  }
+
+  throw new Error('Target hold is full');
+}
+
+function handleSwapRequest_(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ensureSwapRequestsSheet_(ss);
+
+  const name = String(payload.name || '').trim();
+  const fromHold = String(payload.fromHold || '').trim();
+  const toHold = String(payload.toHold || '').trim();
+
+  if (!name) return jsonOut_({ ok: false, error: 'Missing name' });
+  if (!fromHold || !toHold) return jsonOut_({ ok: false, error: 'Missing hold' });
+
+  const id = 'swap-' + new Date().getTime() + '-' + Math.floor(Math.random() * 100000);
+  sheet.appendRow([id, new Date(), name, fromHold, toHold, 'pending', '']);
+
+  return jsonOut_({ ok: true, id: id });
+}
+
+function handleSwapReview_(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const requestSheet = ensureSwapRequestsSheet_(ss);
+  const assignmentsSheet = ss.getSheetByName('Assignments');
+
+  if (!assignmentsSheet) return jsonOut_({ ok: false, error: 'Assignments sheet not found' });
+
+  const id = String(payload.id || '').trim();
+  const decision = String(payload.decision || '').trim().toLowerCase();
+
+  if (!id) return jsonOut_({ ok: false, error: 'Missing id' });
+  if (!['approved', 'rejected'].includes(decision)) return jsonOut_({ ok: false, error: 'Invalid decision' });
+
+  const requestValues = requestSheet.getDataRange().getValues();
+  let requestRow = -1;
+  let request = null;
+
+  for (let i = 1; i < requestValues.length; i++) {
+    if (String(requestValues[i][0] || '').trim() === id) {
+      requestRow = i + 1;
+      request = requestValues[i];
+      break;
+    }
+  }
+
+  if (!request) return jsonOut_({ ok: false, error: 'Swap request not found' });
+
+  const currentStatus = String(request[5] || '').trim().toLowerCase();
+  if (currentStatus && currentStatus !== 'pending') {
+    return jsonOut_({ ok: false, error: 'Swap request already handled' });
+  }
+
+  const name = String(request[2] || '').trim();
+  const fromHold = String(request[3] || '').trim();
+  const toHold = String(request[4] || '').trim();
+
+  if (decision === 'approved') {
+    const assignmentValues = assignmentsSheet.getDataRange().getValues();
+    let assignmentRow = -1;
+    let holds = [];
+
+    for (let i = 1; i < assignmentValues.length; i++) {
+      if (String(assignmentValues[i][0] || '').trim() === name) {
+        assignmentRow = i + 1;
+        holds = parseHoldsList_(assignmentValues[i][1]);
+        break;
+      }
+    }
+
+    if (assignmentRow === -1) return jsonOut_({ ok: false, error: 'Player assignment not found' });
+
+    const fromBase = baseHold_(fromHold);
+    const toBase = baseHold_(toHold);
+    const newTargetHold = chooseAvailableHoldForBase_(ss, toBase, name);
+    const filteredHolds = holds.filter(hold => baseHold_(hold) !== fromBase);
+
+    if (!filteredHolds.includes(newTargetHold)) filteredHolds.push(newTargetHold);
+    assignmentsSheet.getRange(assignmentRow, 2).setValue(formatHoldsList_(filteredHolds));
+  }
+
+  requestSheet.getRange(requestRow, 6).setValue(decision);
+  requestSheet.getRange(requestRow, 7).setValue(new Date());
+
+  return jsonOut_({ ok: true, id: id, status: decision });
+}
+
+function ensurePlayersHeaders_(sheet) {
+  const headers = [
+    'Name',
+    'Timer',
+    'Price',
+    'HoldWishes',
+    'DayTimeWishes',
+    'Unplaced',
+    'Note',
+    'Birthdate',
+    'Level',
+    'Age'
+  ];
+
+  // Always write the first 10 headers. This is intentional and safe.
+  // It does not touch data rows. It only makes sure the sheet structure exists.
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+}
+
+function parseWishData_(text) {
+  const raw = String(text || '').trim();
+  const lower = raw.toLowerCase();
+  const result = { h: [], dw: [], u: false, note: raw };
+
+  if (!raw) {
+    result.u = true;
+    return result;
+  }
+
+  const dayMap = [
+    { keys: ['mandag', 'man'], code: 'man' },
+    { keys: ['tirsdag', 'tir'], code: 'tir' },
+    { keys: ['onsdag', 'ons'], code: 'ons' },
+    { keys: ['torsdag', 'tor'], code: 'tor' },
+    { keys: ['fredag', 'fre'], code: 'fre' }
+  ];
+
+  const slotMap = [
+    { patterns: ['15:00-16:00', '15.00-16.00', '15-16', '15:00–16:00', '15 til 16'], slot: '15:00–16:00' },
+    { patterns: ['16:00-17:00', '16.00-17.00', '16-17', '16:00–17:00', '16 til 17'], slot: '16:00–17:00' },
+    { patterns: ['17:00-18:00', '17.00-18.00', '17-18', '17:00–18:00', '17 til 18'], slot: '17:00–18:00' }
+  ];
+
+  dayMap.forEach(day => {
+    if (!day.keys.some(k => lower.includes(k))) return;
+
+    slotMap.forEach(slot => {
+      if (slot.patterns.some(p => lower.includes(p))) {
+        const val = `${day.code}-${slot.slot}`;
+        if (!result.dw.includes(val)) result.dw.push(val);
+      }
+    });
+
+    const says15to17 =
+      lower.includes('15-17') ||
+      lower.includes('15:00-17:00') ||
+      lower.includes('15.00-17.00') ||
+      lower.includes('15 til 17');
+
+    if (says15to17) {
+      [`${day.code}-15:00–16:00`, `${day.code}-16:00–17:00`].forEach(val => {
+        if (!result.dw.includes(val)) result.dw.push(val);
+      });
+    }
+  });
+
+  if (!result.dw.length) result.u = true;
+
+  return result;
+}
+
+function parseAssignedTeamsOnly_(value) {
+  if (!value) return [];
+
+  return String(value)
+    .split(',')
+    .map(x => Number(String(x).trim()))
+    .filter(n => !isNaN(n) && n >= 1 && n <= 42);
+}
+
+function calculateAgeFromDanishDate_(dateStr) {
+  if (!dateStr) return '';
+
+  const cleaned = String(dateStr).trim();
+  const parts = cleaned.split(/[\/.-]/).map(x => String(x || '').trim());
+
+  if (parts.length !== 3) return '';
+
+  const day = Number(parts[0]);
+  const month = Number(parts[1]) - 1;
+  let year = Number(parts[2]);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return '';
+  if (year < 100) year += year > 30 ? 1900 : 2000;
+
+  const birth = new Date(year, month, day);
+  if (
+    isNaN(birth.getTime()) ||
+    birth.getFullYear() !== year ||
+    birth.getMonth() !== month ||
+    birth.getDate() !== day
+  ) return '';
+
+  const today = new Date();
+
+  let age = today.getFullYear() - birth.getFullYear();
+
+  const hasHadBirthday =
+    today.getMonth() > birth.getMonth() ||
+    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+
+  if (!hasHadBirthday) age--;
+
+  return age;
+}
+
+function normalizeTimer_(value) {
+  const s = String(value || '').trim();
+  const n = Number(s.replace(',', '.'));
+
+  if (!isNaN(n) && n > 0) return n;
+
+  const lower = s.toLowerCase();
+
+  if (lower.includes('4')) return 4;
+  if (lower.includes('3')) return 3;
+  if (lower.includes('2')) return 2;
+
+  return 1;
+}
+
+function normalizePrice_(value) {
+  const s = String(value || '').replace(/[^\d]/g, '');
+  const n = Number(s);
+
+  return isNaN(n) ? 0 : n;
+}
+
+function inferTimerFromRowsBeforeHeader_(rows, headerRowIndex) {
+  let text = '';
+
+  for (let i = 0; i < headerRowIndex; i++) {
+    text += ' ' + rows[i].map(cell => String(cell || '')).join(' ');
+  }
+
+  return inferTimerFromText_(text, '', '');
+}
+
+function inferTimerFromText_(productText, meddelelse, timerText) {
+  const txt = `${productText} ${meddelelse} ${timerText || ''}`.toLowerCase();
+
+  if (
+    txt.includes('4 gange') ||
+    txt.includes('4 timer') ||
+    txt.includes('4 time') ||
+    txt.includes('4x') ||
+    txt.includes('4 x') ||
+    txt.includes('fire gange') ||
+    txt.includes('fire timer') ||
+    txt.includes('fire x')
+  ) return 4;
+
+  if (
+    txt.includes('3 gange') ||
+    txt.includes('3 timer') ||
+    txt.includes('3 time') ||
+    txt.includes('3x') ||
+    txt.includes('3 x') ||
+    txt.includes('tre gange') ||
+    txt.includes('tre timer') ||
+    txt.includes('tre x')
+  ) return 3;
+
+  if (
+    txt.includes('2 gange') ||
+    txt.includes('2 timer') ||
+    txt.includes('2 time') ||
+    txt.includes('2x') ||
+    txt.includes('2 x') ||
+    txt.includes('to gange') ||
+    txt.includes('to timer') ||
+    txt.includes('to x')
+  ) return 2;
+
+  return 1;
+}
+
+function inferPriceFromTimer_(t) {
+  if (t === 4) return 1300;
+  if (t === 3) return 1100;
+  if (t === 2) return 900;
+
+  return 600;
+}
+
+function findHeaderIndex_(header, candidates) {
+  const normalizedCandidates = candidates.map(c => String(c).trim().toLowerCase());
+
+  for (let i = 0; i < header.length; i++) {
+    const h = String(header[i] || '').trim().toLowerCase();
+    if (normalizedCandidates.includes(h)) return i;
+  }
+
+  return -1;
+}
+
+function jsonOut_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
