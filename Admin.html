@@ -1021,8 +1021,7 @@ function renderMain() {
       <div class="dh-assigned-label">Tildelte hold (${assigned.length}/${maxHolds})</div>
       <div class="dh-assigned-val ${assigned.length?'':'none'}">${assignedStr||'Ikke tildelt endnu'}</div>
     </div>
-  </div>
-  <div class="inline-schedule-panel" id="inline-schedule-panel"></div>`;
+  </div>`;
 
 html += `
   <div class="custom-hold">
@@ -1116,6 +1115,8 @@ expandedWishHolds.forEach(nr => {
       ${assigned.length?`<button class="custom-hold-btn" style="background:#fee2e2;color:#b91c1c;margin-left:auto" onclick="clearAssignment()">Fjern alle</button>`:''}
     </div>
   </div>`;
+
+  html += `<div class="inline-schedule-panel" id="inline-schedule-panel"></div>`;
 
   const hasPrev = currentIdx > 0;
   const hasNext = currentIdx < players.length - 1;
