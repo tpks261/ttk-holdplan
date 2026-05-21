@@ -314,9 +314,6 @@ function getHoldKeysForDisplayHold(holdNo){
   const keys = new Set([base]);
 
   getExtraHoldsForBaseHold(base).forEach(h => keys.add(String(h)));
-  Object.keys(holdMap).forEach(key => {
-    if (getDisplayHoldNo(key) === base) keys.add(String(key));
-  });
 
   return Array.from(keys).sort((a,b)=>Number(a)-Number(b));
 }
