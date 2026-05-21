@@ -56,6 +56,10 @@ function doPost(e) {
       return handleCsvImport_(payload.data);
     }
 
+    if (payload.type === 'addPlayer') {
+      return handleManualPlayerAdd_(payload);
+    }
+
     if (payload.type === 'toggleExtraHold' || payload.hold) {
       return handleExtraHoldToggle_(payload);
     }
@@ -193,6 +197,71 @@ function handleAssignmentSave_(payload) {
   if (!found) sheet.appendRow([name, holds]);
 
   return jsonOut_({ ok: true });
+}
+
+function handleManualPlayerAdd_(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const playersSheet = ss.getSheetByName('Players');
+  const assignmentsSheet = ss.getSheetByName('Assignments');
+
+  if (!playersSheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
+  if (!assignmentsSheet) return jsonOut_({ ok: false, error: 'Assignments sheet not found' });
+
+  ensurePlayersHeaders_(playersSheet);
+  ensureAssignmentsHeaders_(assignmentsSheet);
+
+  const player = payload.player || payload;
+  const name = String(player.n || player.name || '').trim();
+  const timer = Math.max(Number(player.t || player.timer || player.hours || 1), 1);
+  const price = Number(player.p || player.price || player.pris || 0) || inferPriceFromTimer_(timer);
+  const holdWishes = Array.isArray(player.h)
+    ? player.h.map(x => String(x || '').trim()).filter(Boolean).join(',')
+    : String(player.h || '').trim();
+  const dayTimeWishes = Array.isArray(player.dw)
+    ? player.dw.map(x => String(x || '').trim()).filter(Boolean).join(',')
+    : String(player.dw || '').trim();
+  const unplaced = player.u === false || player.unplaced === false ? 'FALSE' : 'TRUE';
+  const note = String(player.note || '').trim();
+  const birthdate = String(player.birthdate || '').trim();
+  const level = String(player.level || '').trim();
+  const age = player.age !== '' && player.age !== null && player.age !== undefined
+    ? player.age
+    : calculateAgeFromDanishDate_(birthdate);
+
+  if (!name) return jsonOut_({ ok: false, error: 'Missing name' });
+
+  const playersValues = playersSheet.getDataRange().getValues();
+  for (let i = 1; i < playersValues.length; i++) {
+    if (String(playersValues[i][0] || '').trim() === name) {
+      return jsonOut_({ ok: false, error: 'Player already exists: ' + name });
+    }
+  }
+
+  playersSheet.appendRow([
+    name,
+    timer,
+    price,
+    holdWishes,
+    dayTimeWishes,
+    unplaced,
+    note,
+    birthdate,
+    level,
+    age
+  ]);
+
+  const assignmentValues = assignmentsSheet.getDataRange().getValues();
+  let assignmentFound = false;
+  for (let i = 1; i < assignmentValues.length; i++) {
+    if (String(assignmentValues[i][0] || '').trim() === name) {
+      assignmentFound = true;
+      break;
+    }
+  }
+
+  if (!assignmentFound) assignmentsSheet.appendRow([name, '']);
+
+  return jsonOut_({ ok: true, name: name });
 }
 
 function handleLevelSave_(payload) {
@@ -625,6 +694,10 @@ function ensurePlayersHeaders_(sheet) {
   // Always write the first 10 headers. This is intentional and safe.
   // It does not touch data rows. It only makes sure the sheet structure exists.
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+}
+
+function ensureAssignmentsHeaders_(sheet) {
+  sheet.getRange(1, 1, 1, 2).setValues([['Name', 'Holds']]);
 }
 
 function parseWishData_(text) {
