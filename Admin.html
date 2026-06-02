@@ -607,6 +607,12 @@ function sameBaseHold(a, b) {
   return Math.floor(Number(a)) === Math.floor(Number(b));
 }
 
+function normalizeAssignmentHold(holdNo) {
+  const n = Number(String(holdNo || '').replace(',', '.'));
+  if (isNaN(n)) return '';
+  return String(Math.floor(n));
+}
+
 function dayToCode(day){
   const map = {
     "Mandag": "man",
@@ -671,7 +677,8 @@ function holdCounts() {
 
   players.forEach(p => {
     (Array.isArray(p.a) ? p.a : []).forEach(h => {
-      const key = String(h);
+      const key = normalizeAssignmentHold(h);
+      if (!key) return;
       c[key] = (c[key] || 0) + 1;
     });
   });
@@ -1007,7 +1014,11 @@ function renderMain() {
   const assigned    = p.a;
   const maxHolds    = p.t;
   const assignedStr = assigned.length
-  ? assigned.map(nr => { const info = getHoldInfoForHold(nr); return info ? `Hold ${nr} · ${info.day} · ${info.slot}` : null; }).filter(Boolean).join('<br>') || null
+  ? assigned.map(nr => {
+      const displayNr = normalizeAssignmentHold(nr);
+      const info = getHoldInfoForHold(displayNr);
+      return info ? `Hold ${displayNr} · ${info.day} · ${info.slot}` : null;
+    }).filter(Boolean).join('<br>') || null
   : null;
 
  let html = `
@@ -1067,26 +1078,20 @@ if (p.u || p.note) {
   const expandedWishHolds = [];
 
 wishHolds.forEach(nr => {
-  expandedWishHolds.push(String(nr));
-
-  const extras = getExtraHoldsForBaseHold(nr);
-
-  extras.forEach(ex => {
-    if (!expandedWishHolds.includes(String(ex))) {
-      expandedWishHolds.push(String(ex));
-    }
-  });
+  const baseNr = normalizeAssignmentHold(nr);
+  if (baseNr && !expandedWishHolds.includes(baseNr)) expandedWishHolds.push(baseNr);
 });
 
 expandedWishHolds.forEach(nr => {
   const baseNr = Math.floor(Number(nr));
   const info = holdInfo[baseNr];
   if (!info) return;
-  const cnt = counts[String(nr)] || 0;
-      const isSelected = assigned.map(String).includes(String(nr));
+  const capacity = getHoldCapacity(nr);
+  const cnt = counts[String(baseNr)] || 0;
+      const isSelected = assigned.some(h => sameBaseHold(h, nr));
       const canAddMore = assigned.length < maxHolds;
       const canReplaceSameBase = !isSelected && !canAddMore && assigned.some(h => sameBaseHold(h, nr));
-      const isFull     = cnt >= 6 && !isSelected;
+      const isFull     = cnt >= capacity && !isSelected;
       const isDisabled = (!isSelected && !canAddMore && !canReplaceSameBase) || isFull;
 
       html += `
@@ -1099,7 +1104,7 @@ expandedWishHolds.forEach(nr => {
               <div class="hold-opt-time">${info.slot}</div>
             </div>
             <span class="hold-opt-ag">${info.ag}</span>
-            <div class="hold-opt-count"><strong>${cnt}/6</strong>spillere</div>
+            <div class="hold-opt-count"><strong>${cnt}/${capacity}</strong>spillere</div>
           </div>
           <div class="selected-tick">✓</div>
         </div>`;
@@ -1108,9 +1113,9 @@ expandedWishHolds.forEach(nr => {
   }
 
   html += `<div class="custom-hold">
-    <label>Tildel et andet hold manuelt (hold 1–42 eller ekstrahold fx 2.5)</label>
+    <label>Tildel et andet hold manuelt (hold 1–42)</label>
     <div class="custom-hold-row">
-      <input type="text" id="custom-hold-input" inputmode="decimal" placeholder="fx 2.5">
+      <input type="text" id="custom-hold-input" inputmode="numeric" placeholder="fx 2">
       <button class="custom-hold-btn" onclick="assignCustom()">Tildel</button>
       ${assigned.length?`<button class="custom-hold-btn" style="background:#fee2e2;color:#b91c1c;margin-left:auto" onclick="clearAssignment()">Fjern alle</button>`:''}
     </div>
@@ -1132,14 +1137,15 @@ expandedWishHolds.forEach(nr => {
 function toggleHold(nr) {
   const p      = players[currentIdx];
   if (!Array.isArray(p.a)) p.a = [];
-  const holdStr = String(nr);
+  const holdStr = normalizeAssignmentHold(nr);
+  if (!holdStr || !getHoldInfoForHold(holdStr)) return;
   const counts = holdCounts();
-  const idx    = p.a.map(String).indexOf(holdStr);
+  const idx    = p.a.findIndex(h => sameBaseHold(h, holdStr));
 
   if (idx > -1) {
     p.a.splice(idx, 1);
   } else {
-    if ((counts[holdStr]||0) >= 6) return;
+    if ((counts[holdStr]||0) >= getHoldCapacity(holdStr)) return;
 
     if (p.a.length >= p.t) {
       const replaceIdx = p.a.findIndex(h => sameBaseHold(h, holdStr));
@@ -1158,19 +1164,20 @@ function toggleHold(nr) {
 
 function assignCustom() {
   const input = document.getElementById('custom-hold-input');
-  const val = String(input.value || '').trim().replace(',', '.');
-  const n = Number(val);
-  if (!val || isNaN(n) || n < 1 || n > 42 || !getHoldInfoForHold(val)) {
-    alert('Angiv et holdnummer mellem 1 og 42, fx 2 eller 2.5');
+  const raw = String(input.value || '').trim().replace(',', '.');
+  const n = Number(raw);
+  const val = normalizeAssignmentHold(raw);
+  if (!raw || isNaN(n) || n < 1 || n > 42 || !getHoldInfoForHold(val)) {
+    alert('Angiv et holdnummer mellem 1 og 42');
     return;
   }
 
   const p      = players[currentIdx];
   if (!Array.isArray(p.a)) p.a = [];
-  if (p.a.map(String).includes(val))   { alert('Holdet er allerede valgt'); return; }
+  if (p.a.some(h => sameBaseHold(h, val)))   { alert('Holdet er allerede valgt'); return; }
 
   const counts = holdCounts();
-  if ((counts[val]||0) >= 6) { alert('Holdet er fyldt op'); return; }
+  if ((counts[val]||0) >= getHoldCapacity(val)) { alert('Holdet er fyldt op'); return; }
 
   if (p.a.length >= p.t) {
     const replaceIdx = p.a.findIndex(h => sameBaseHold(h, val));
