@@ -2,6 +2,8 @@
 
 Denne branch gør Vercel-frontenden klar til at bruge den rigtige backend uden at ændre den aktive sommerløsning.
 
+Den bruges også som test-branch for det nye Vercel-projekt, indtil vi aktivt vælger at merge eller flytte trafik.
+
 ## Hvad ændres
 
 Frontend får et sikkert admin-login med Google OAuth. Kun mailadresser i `ADMIN_EMAILS` får adgang til `/admin`. Admin-kald går gennem Vercel API'et, som sender et hemmeligt token videre til Apps Script, så vinterdata kan skrives uden at tokenet ligger i browseren.
