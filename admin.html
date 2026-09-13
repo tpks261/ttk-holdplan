@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTK Admin - Vintertraening</title>
+<style>
+:root{--navy:#1B3A5C;--blue:#2E6DA4;--green:#16a34a;--red:#C0392B;--amber:#d97706;--surface:#eef3f8;--text:#1a1a2e;--muted:#6b7280;--border:#d1dde8;--white:#fff;--shadow:0 8px 26px rgba(27,58,92,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--surface);color:var(--text);min-height:100vh}
+.top{background:var(--navy);color:#fff;padding:22px 20px}.top-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.club{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.62);margin-bottom:4px}h1{font-size:24px}.sub{font-size:13px;color:rgba(255,255,255,.66);margin-top:4px}
+.nav{display:flex;gap:8px;flex-wrap:wrap}.nav a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:800}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 40px}.panel{background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}.panel-head{background:var(--navy);color:#fff;padding:13px 15px;font-size:13px;font-weight:900}.panel-body{padding:14px}.notice{font-size:13px;line-height:1.55;color:var(--muted)}
+.login{max-width:460px;margin:34px auto}.btn{border:0;border-radius:8px;padding:10px 14px;background:var(--navy);color:#fff;font-size:13px;font-weight:850;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn:hover{background:var(--blue)}.btn.light{background:#eef5fc;color:var(--navy);border:1px solid var(--border)}.btn.red{background:#fee2e2;color:#b91c1c}.btn:disabled{opacity:.45;cursor:not-allowed}
+.status{font-size:12px;color:var(--muted);margin-top:9px;line-height:1.45}.status.ok{color:#15803d}.status.err{color:#b91c1c}.status.warn{color:#92400e}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.tab{border:1px solid var(--border);background:#fff;color:var(--navy);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:850;cursor:pointer}.tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}.tab:disabled{opacity:.55;cursor:not-allowed}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.metric{background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 14px;box-shadow:var(--shadow)}.metric span{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase}.metric strong{display:block;font-size:25px;color:var(--navy);margin-top:5px}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:16px}.field{margin-bottom:12px}label{display:block;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px}input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 11px;font-size:14px;color:var(--text);background:#fff}input:focus,select:focus{outline:none;border-color:var(--blue)}
+.player-list{display:flex;flex-direction:column;gap:8px}.player-card{border:1px solid var(--border);border-radius:8px;background:#f8fafc;padding:11px}.player-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.player-name{font-size:14px;font-weight:900;color:var(--navy)}.small{font-size:12px;color:var(--muted);margin-top:2px}.badge{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;background:#fef3c7;color:#92400e}.badge.done{background:#dcfce7;color:#15803d}.badge.empty{background:#fee2e2;color:#b91c1c}
+.holds{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px}.hold{border:1px solid var(--border);border-radius:8px;background:#fff;padding:8px 6px;text-align:center;font-size:12px;cursor:pointer}.hold strong{display:block;color:var(--navy);font-size:16px}.hold.active{background:#f0fdf4;border-color:#86efac;color:#166534;font-weight:900}.hold.wish:not(.active){border-color:#f59e0b;background:#fffbeb}.hold.full:not(.active){opacity:.45;cursor:not-allowed}
+.schedule{display:grid;gap:10px}.schedule-row{display:grid;grid-template-columns:110px 1fr;gap:10px;border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px}.schedule-time{font-size:12px;color:var(--muted);font-weight:900}.schedule-holds{display:flex;gap:7px;flex-wrap:wrap}.schedule-pill{border-radius:999px;background:#e6f0fa;color:var(--navy);padding:7px 10px;font-size:12px;font-weight:900}
+@media(max-width:820px){.grid,.summary{grid-template-columns:1fr}.schedule-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <div class="club">Taarbaek Tennis Klub</div>
+      <h1>Admin - vintertraening</h1>
+      <div class="sub">CSV ind som oensker. Jacob godkender tildelingerne.</div>
+    </div>
+    <nav class="nav" aria-label="Admin navigation">
+      <a href="/">Startside</a>
+      <a href="/winter">Vinterfront</a>
+      <a href="/winter-schedule">Holdoversigt</a>
+      <a href="/api/auth/logout">Log ud</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel login" id="login-panel" hidden>
+    <div class="panel-head">Admin-login</div>
+    <div class="panel-body">
+      <p class="notice">Log ind med den Google-konto, der staar paa adminlisten. Almindelige Gmail-adresser virker fint.</p>
+      <p style="margin-top:14px"><a class="btn" href="/api/auth/login">Log ind med Google</a></p>
+    </div>
+  </section>
+
+  <section id="admin-app" hidden>
+    <div class="tabs">
+      <button class="tab" disabled>Sommertraening er live og roeres ikke her</button>
+      <button class="tab active">Vintertraening</button>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">Sikker drift</div>
+      <div class="panel-body">
+        <p class="notice">Denne adminside skriver kun til vinterdata. Sommerens aktive Google Sites-loesning fortsaetter med de nuvaerende ark og gamle kald.</p>
+        <div class="status" id="session-status"></div>
+      </div>
+    </section>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">Upload vinter-CSV</div>
+        <div class="panel-body">
+          <div class="field"><label for="csv-file">CSV-fil</label><input id="csv-file" type="file" accept=".csv,text/csv"></div>
+          <button class="btn" id="upload-btn">Upload som vinteroensker</button>
+          <div class="status" id="upload-status">CSV bruger samme format som sommer. Hold-kolonnen gemmes som oenske.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">Vinterens holdoversigt</div>
+        <div class="panel-body"><div class="schedule" id="schedule"></div></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">Spillere og Jacobs tildelinger</div>
+      <div class="panel-body">
+        <div class="field"><label for="search">Soeg spiller</label><input id="search" type="search" placeholder="Skriv navn"></div>
+        <div class="player-list" id="players"></div>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script>
+const SEASON = 'winter';
+const schedule = [
+  {nr:'1',day:'Mandag',time:'15-16',location:'Lyngby'},
+  {nr:'2',day:'Mandag',time:'16-17',location:'Lyngby'},
+  {nr:'3',day:'Mandag',time:'17-18',location:'Lyngby'},
+  {nr:'4',day:'Tirsdag',time:'15-16',location:'Lyngby'},
+  {nr:'5',day:'Tirsdag',time:'16-17',location:'Lyngby'},
+  {nr:'6',day:'Tirsdag',time:'17-18',location:'Lyngby'},
+  {nr:'13',day:'Tirsdag',time:'17-18',location:'Taarbaek'},
+  {nr:'7',day:'Onsdag',time:'15-16',location:'Lyngby'},
+  {nr:'8',day:'Onsdag',time:'16-17',location:'Lyngby'},
+  {nr:'9',day:'Onsdag',time:'17-18',location:'Lyngby'},
+  {nr:'10',day:'Torsdag',time:'15-16',location:'Lyngby'},
+  {nr:'14',day:'Torsdag',time:'17-18',location:'Taarbaek'},
+  {nr:'11',day:'Fredag',time:'15-16',location:'Lyngby'},
+  {nr:'12',day:'Fredag',time:'16-17',location:'Lyngby'},
+  {nr:'15',day:'Fredag',time:'17-18',location:'Taarbaek'}
+];
+let players = [];
+let assignments = {};
+
+function normalize(str){return String(str||'').toLowerCase().replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')}
+function parseHolds(value){return String(value||'').replace(/\s/g,'').split(/[;,]/).map(x=>x.trim()).filter(Boolean)}
+function playerAssignments(name){return parseHolds(assignments[name])}
+function wishHolds(player){return Array.isArray(player.h)?player.h.map(String):[]}
+function maxHolds(player){return Math.max(1,Number(player.t||1))}
+function holdCount(nr){return players.filter(p=>playerAssignments(p.n).includes(String(nr))).length}
+function isDone(player){return playerAssignments(player.n).length>=maxHolds(player)}
+function setStatus(id,msg,cls=''){const el=document.getElementById(id);el.className='status '+cls;el.textContent=msg}
+
+async function api(payload){
+  const res = await fetch('/api/admin/backend', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({season:SEASON}, payload))
+  });
+  const data = await res.json();
+  if(!res.ok || !data.ok) throw new Error(data.error || 'API-kald fejlede');
+  return data;
+}
+
+async function checkSession(){
+  const res = await fetch('/api/auth/session');
+  const data = await res.json();
+  if(!data.signedIn){document.getElementById('login-panel').hidden=false;return}
+  document.getElementById('admin-app').hidden=false;
+  setStatus('session-status','Logget ind som '+data.email,'ok');
+  await load();
+}
+
+async function load(){
+  setStatus('session-status','Henter vinterdata...','');
+  const data = await api({type:'load'});
+  players = (data.players||[]).slice().sort((a,b)=>String(a.n).localeCompare(String(b.n),'da'));
+  assignments = data.assignments || {};
+  render();
+  setStatus('session-status','Vinterdata hentet','ok');
+}
+
+function renderSummary(){
+  const done=players.filter(isDone).length;
+  const wished=players.filter(p=>wishHolds(p).length).length;
+  const assignedAny=players.filter(p=>playerAssignments(p.n).length).length;
+  document.getElementById('summary').innerHTML=[['Spillere',players.length],['Med oensker',wished],['Har tildeling',assignedAny],['Faerdige',done]].map(([label,value])=>`<div class="metric"><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+function renderSchedule(){
+  const groups={};
+  schedule.forEach(h=>{const key=h.day+'|'+h.location;if(!groups[key])groups[key]={day:h.day,location:h.location,holds:[]};groups[key].holds.push(h)});
+  document.getElementById('schedule').innerHTML=Object.values(groups).map(g=>`<div class="schedule-row"><div class="schedule-time">${g.day}<br>${g.location}</div><div class="schedule-holds">${g.holds.map(h=>`<span class="schedule-pill">Hold ${h.nr} · ${h.time} · ${holdCount(h.nr)}/4</span>`).join('')}</div></div>`).join('');
+}
+
+function renderPlayers(){
+  const q=normalize(document.getElementById('search').value);
+  const list=players.filter(p=>!q||normalize(p.n).includes(q));
+  document.getElementById('players').innerHTML=list.map(p=>{
+    const assigned=playerAssignments(p.n);
+    const wishes=wishHolds(p);
+    const badge=assigned.length?assigned.length>=maxHolds(p)?'<span class="badge done">Faerdig</span>':'<span class="badge">Delvis</span>':wishes.length?'<span class="badge">Afventer</span>':'<span class="badge empty">Ingen oensker</span>';
+    return `<article class="player-card"><div class="player-head"><div><div class="player-name">${p.n}</div><div class="small">${maxHolds(p)} time(r) pr. uge${p.age?' · '+p.age+' aar':''}${p.level?' · '+p.level:''}</div><div class="small"><strong>Oensker:</strong> ${wishes.length?wishes.map(h=>'Hold '+h).join(', '):p.note||'Ingen registrerede holdoensker'}</div><div class="small"><strong>Tildelt:</strong> ${assigned.length?assigned.map(h=>'Hold '+h).join(', '):'Ikke tildelt endnu'}</div></div>${badge}</div><div class="holds">${schedule.map(h=>{const active=assigned.includes(h.nr);const wish=wishes.includes(h.nr);const full=holdCount(h.nr)>=4&&!active;return `<button class="hold ${active?'active':''} ${wish?'wish':''} ${full?'full':''}" data-player="${p.n.replace(/"/g,'&quot;')}" data-hold="${h.nr}" ${full?'disabled':''}><strong>${h.nr}</strong>${h.day}<br>${h.time}<br>${h.location}${wish?'<br>Oenske':''}</button>`}).join('')}</div></article>`;
+  }).join('') || '<p class="notice">Ingen spillere matcher soegningen.</p>';
+  document.querySelectorAll('[data-player][data-hold]').forEach(btn=>btn.addEventListener('click',()=>toggleHold(btn.dataset.player,btn.dataset.hold)));
+}
+
+async function toggleHold(name,nr){
+  const player=players.find(p=>p.n===name);
+  if(!player)return;
+  const current=playerAssignments(name);
+  let next;
+  if(current.includes(nr)){next=current.filter(h=>h!==nr)}else{if(current.length>=maxHolds(player)){alert(`${name} maa hoejst have ${maxHolds(player)} hold`);return}next=[...current,nr].sort((a,b)=>Number(a)-Number(b))}
+  assignments[name]=next.join(',');
+  render();
+  try{await api({type:'save',name,holds:next.join(',')});setStatus('session-status','Gemt: '+name,'ok')}catch(err){setStatus('session-status','Kunne ikke gemme: '+err.message,'err');await load()}
+}
+
+async function uploadCsv(){
+  const file=document.getElementById('csv-file').files[0];
+  if(!file){setStatus('upload-status','Vaelg en CSV-fil foerst','err');return}
+  const text=await file.text();
+  setStatus('upload-status','Uploader vinter-CSV...','');
+  try{const data=await api({type:'importCSV',data:text});setStatus('upload-status',`Importeret ${data.count||0} raekker som vinteroensker`,'ok');await load()}catch(err){setStatus('upload-status','Upload fejlede: '+err.message,'err')}
+}
+
+function render(){renderSummary();renderSchedule();renderPlayers()}
+document.getElementById('upload-btn').addEventListener('click',uploadCsv);
+document.getElementById('search').addEventListener('input',renderPlayers);
+checkSession();
+</script>
+</body>
+</html>
