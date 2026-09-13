@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Taarbaek Tennis Klub - Vintertraening</title>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Taarbæk Tennis Klub - Vintertræning</title>
 <style>
 :root{--navy:#1B3A5C;--blue:#2E6DA4;--green:#16a34a;--red:#C0392B;--surface:#eef3f8;--text:#1a1a2e;--muted:#6b7280;--border:#d1dde8;--white:#fff;--shadow:0 8px 32px rgba(27,58,92,.14)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -23,25 +25,61 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-seri
 <body>
 <div class="site-header">
   <nav class="site-nav" aria-label="Hovedmenu">
-    <a href="/">Vaelg traening</a>
-    <a href="/winter" class="active">Vintertraening</a>
+    <a href="/">Vælg træning</a>
+    <a href="/summer">Sommertræning</a>
+    <a href="/winter" class="active">Vintertræning</a>
     <a href="/winter-schedule">Holdoversigt</a>
     <a href="/admin">Admin</a>
   </nav>
-  <div class="club-name">Taarbaek Tennis Klub</div>
-  <h1>Holdsoegning - Vintertraening</h1>
+  <div class="club-name">Taarbæk Tennis Klub</div>
+  <h1>Holdsøgning - Vintertræning</h1>
   <div class="subtitle">Kun Jacobs godkendte holdplaceringer vises her</div>
 </div>
 
 <div class="status" id="status">Henter vinterdata...</div>
-<div class="search-wrap"><label class="search-label" for="search-input">Soeg dit navn</label><div class="search-box"><input type="text" id="search-input" placeholder="F.eks. Spiller 1..." autocomplete="off" spellcheck="false"><span class="search-icon">⌕</span></div><div class="suggestions" id="suggestions"></div></div>
-<div class="results" id="results"><div class="state-empty"><h2>Find dit vinterhold</h2><p>Skriv dit navn i soegefeltet ovenfor. Du ser kun hold, der er endeligt tildelt af Jacob.</p></div></div>
-<section class="schedule-section"><div class="section-label">Vinterens skema</div><div class="schedule-card" id="schedule"></div></section>
-<div class="site-footer">Taarbaek Tennis Klub · Vintertraening</div>
+
+<div class="search-wrap">
+  <label class="search-label" for="search-input">Søg dit navn</label>
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="F.eks. Spiller 1..." autocomplete="off" spellcheck="false">
+    <span class="search-icon">⌕</span>
+  </div>
+  <div class="suggestions" id="suggestions"></div>
+</div>
+
+<div class="results" id="results">
+  <div class="state-empty">
+    <h2>Find dit vinterhold</h2>
+    <p>Skriv dit navn i søgefeltet ovenfor. Du ser kun hold, der er endeligt tildelt af Jacob.</p>
+  </div>
+</div>
+
+<section class="schedule-section">
+  <div class="section-label">Vinterens skema</div>
+  <div class="schedule-card" id="schedule"></div>
+</section>
+
+<div class="site-footer">Taarbæk Tennis Klub · Vintertræning</div>
 
 <script>
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwqqmTbi2CcGYpMFF8J_Aat6RxqTR6q7gkF0fe2airnbKfOcPLGrKP6l-AJbKZ1UMo/exec';
-const schedule=[{nr:'1',day:'Mandag',time:'15-16',location:'Lyngby'},{nr:'2',day:'Mandag',time:'16-17',location:'Lyngby'},{nr:'3',day:'Mandag',time:'17-18',location:'Lyngby'},{nr:'4',day:'Tirsdag',time:'15-16',location:'Lyngby'},{nr:'5',day:'Tirsdag',time:'16-17',location:'Lyngby'},{nr:'6',day:'Tirsdag',time:'17-18',location:'Lyngby'},{nr:'13',day:'Tirsdag',time:'17-18',location:'Taarbaek'},{nr:'7',day:'Onsdag',time:'15-16',location:'Lyngby'},{nr:'8',day:'Onsdag',time:'16-17',location:'Lyngby'},{nr:'9',day:'Onsdag',time:'17-18',location:'Lyngby'},{nr:'10',day:'Torsdag',time:'15-16',location:'Lyngby'},{nr:'14',day:'Torsdag',time:'17-18',location:'Taarbaek'},{nr:'11',day:'Fredag',time:'15-16',location:'Lyngby'},{nr:'12',day:'Fredag',time:'16-17',location:'Lyngby'},{nr:'15',day:'Fredag',time:'17-18',location:'Taarbaek'}];
+const schedule=[
+  {nr:'1',day:'Mandag',time:'15-16',location:'Lyngby'},
+  {nr:'2',day:'Mandag',time:'16-17',location:'Lyngby'},
+  {nr:'3',day:'Mandag',time:'17-18',location:'Lyngby'},
+  {nr:'4',day:'Tirsdag',time:'15-16',location:'Lyngby'},
+  {nr:'5',day:'Tirsdag',time:'16-17',location:'Lyngby'},
+  {nr:'6',day:'Tirsdag',time:'17-18',location:'Lyngby'},
+  {nr:'13',day:'Tirsdag',time:'17-18',location:'Taarbæk'},
+  {nr:'7',day:'Onsdag',time:'15-16',location:'Lyngby'},
+  {nr:'8',day:'Onsdag',time:'16-17',location:'Lyngby'},
+  {nr:'9',day:'Onsdag',time:'17-18',location:'Lyngby'},
+  {nr:'10',day:'Torsdag',time:'15-16',location:'Lyngby'},
+  {nr:'14',day:'Torsdag',time:'17-18',location:'Taarbæk'},
+  {nr:'11',day:'Fredag',time:'15-16',location:'Lyngby'},
+  {nr:'12',day:'Fredag',time:'16-17',location:'Lyngby'},
+  {nr:'15',day:'Fredag',time:'17-18',location:'Taarbæk'}
+];
 let players=[],assignments={},holdMap={},selectedPlayer=null,filteredPlayers=[],focusedIdx=-1;
 const input=document.getElementById('search-input'),suggestionsEl=document.getElementById('suggestions'),resultsEl=document.getElementById('results');
 function normalize(str){return String(str||'').toLowerCase().replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa').replace(/é/g,'e')}
@@ -54,12 +92,45 @@ function setStatus(msg,cls=''){const el=document.getElementById('status');el.cla
 function holdByNr(nr){return schedule.find(h=>h.nr===String(nr))}
 function membersForHold(nr){return holdMap[String(nr)]||[]}
 function rebuildHoldMap(){holdMap={};schedule.forEach(h=>holdMap[h.nr]=[]);players.forEach(p=>assignedFor(p.n).forEach(nr=>{if(holdMap[nr])holdMap[nr].push(p.n)}))}
-async function load(){try{const res=await fetch(`${SCRIPT_URL}?season=winter`);const data=await res.json();if(!data.ok)throw new Error(data.error||'Kunne ikke hente vinterdata');players=(data.players||[]).slice().sort((a,b)=>String(a.n).localeCompare(String(b.n),'da'));assignments=data.assignments||{};rebuildHoldMap();renderSchedule();setStatus(`${players.length} vinterspillere · ${Object.keys(assignments).length} tildelingsraekker`,'ok')}catch(err){setStatus('Kunne ikke hente vinterdata: '+err.message,'err')}}
-function renderSchedule(){const groups={};schedule.forEach(h=>{const key=h.day+'|'+h.location;if(!groups[key])groups[key]={day:h.day,location:h.location,holds:[]};groups[key].holds.push(h)});const playerHolds=selectedPlayer?assignedFor(selectedPlayer.n):[];document.getElementById('schedule').innerHTML=Object.values(groups).map(g=>`<div class="schedule-day"><div class="schedule-head">${g.day} · ${g.location}</div><div class="schedule-slot"><div class="schedule-time">${g.holds.map(h=>h.time).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</div><div class="schedule-holds">${g.holds.map(h=>{const mine=playerHolds.includes(h.nr);return `<div class="schedule-hold ${mine?'highlighted':''}" onclick="showHold('${h.nr}')"><div class="hc-label">Hold</div><div class="hc-num">${h.nr}</div><div class="hc-count">${h.time} · ${membersForHold(h.nr).length}/4</div></div>`}).join('')}</div></div></div>`).join('')}
+async function load(){
+  try{
+    const res=await fetch(`${SCRIPT_URL}?season=winter`);
+    const data=await res.json();
+    if(!data.ok)throw new Error(data.error||'Kunne ikke hente vinterdata');
+    players=(data.players||[]).slice().sort((a,b)=>String(a.n).localeCompare(String(b.n),'da'));
+    assignments=data.assignments||{};
+    rebuildHoldMap();
+    renderSchedule();
+    setStatus(`${players.length} vinterspillere · ${Object.keys(assignments).length} tildelingsrækker`,'ok');
+  }catch(err){
+    setStatus('Kunne ikke hente vinterdata: '+err.message,'err');
+  }
+}
+function renderSchedule(){
+  const groups={};
+  schedule.forEach(h=>{const key=h.day+'|'+h.location;if(!groups[key])groups[key]={day:h.day,location:h.location,holds:[]};groups[key].holds.push(h)});
+  const playerHolds=selectedPlayer?assignedFor(selectedPlayer.n):[];
+  document.getElementById('schedule').innerHTML=Object.values(groups).map(g=>`<div class="schedule-day"><div class="schedule-head">${g.day} · ${g.location}</div><div class="schedule-slot"><div class="schedule-time">${g.holds.map(h=>h.time).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</div><div class="schedule-holds">${g.holds.map(h=>{const mine=playerHolds.includes(h.nr);return `<div class="schedule-hold ${mine?'highlighted':''}" onclick="showHold('${h.nr}')"><div class="hc-label">Hold</div><div class="hc-num">${h.nr}</div><div class="hc-count">${h.time} · ${membersForHold(h.nr).length}/4</div></div>`}).join('')}</div></div></div>`).join('');
+}
 function showHold(nr){const h=holdByNr(nr);const members=membersForHold(nr);alert(`Hold ${nr}\n${h.day} ${h.time}\n${h.location}\n\n${members.length?members.join('\n'):'Ingen tildelte spillere endnu'}`)}
-function renderSuggestions(list,q){if(!list.length){suggestionsEl.innerHTML=`<div class="no-results-drop">Ingen spillere fundet for "${q}"</div>`;suggestionsEl.classList.add('visible');return}suggestionsEl.innerHTML=list.slice(0,8).map((p,i)=>`<div class="suggestion-item" data-idx="${i}" onclick="selectPlayer('${p.n.replace(/'/g,"\\'")}')"><div class="suggestion-avatar">${initials(p.n)}</div><span class="suggestion-name">${p.n}</span><span class="suggestion-meta">${assignedFor(p.n).length||'Afventer'} hold</span></div>`).join('');suggestionsEl.classList.add('visible')}
-function selectPlayer(name){const p=players.find(x=>x.n===name);if(!p)return;selectedPlayer=p;input.value=p.n;suggestionsEl.classList.remove('visible');renderResult(p);renderSchedule();window.scrollTo({top:0,behavior:'smooth'})}
-function renderResult(p){const assigned=assignedFor(p.n);if(!assigned.length){resultsEl.innerHTML=`<div class="player-card"><div class="pc-top"><div class="pc-avatar">${initials(p.n)}</div><div><div class="pc-name">${p.n}</div><div class="pc-timer">${timerLabel(p.t)}</div></div><div class="pc-price"><strong>${priceLabel(p.p)}</strong>traening/saeson</div></div></div><div class="unplaced-card"><div class="uc-title">Afventer holdplacering</div><div class="uc-body">${p.n} er registreret til vintertraening, men har ikke faaet en endelig holdplacering endnu.</div></div>`;return}const rows=assigned.map(nr=>{const h=holdByNr(nr);if(!h)return'';const members=membersForHold(nr).filter(m=>m!==p.n);const chips=members.length?members.map(m=>`<div class="member-chip" onclick="selectPlayer('${m.replace(/'/g,"\\'")}')"><div class="chip-av">${initials(m)}</div>${m}</div>`).join(''):'<div class="empty-group">Ingen andre spillere paa dette hold endnu</div>';return `<div class="hold-row"><div class="hold-hero"><div class="hold-number-block"><div class="hold-number-label">Hold</div><div class="hold-number-big">${h.nr}</div></div><div class="hold-details"><div class="hold-day-time"><span class="day-chip">${h.day}</span><span class="time-chip">${h.time}</span><span class="wish-tag">${h.location}</span></div></div></div><div class="hold-info"><div class="group-label">Oevrige spillere paa holdet</div><div class="member-chips">${chips}</div></div></div>`}).join('');resultsEl.innerHTML=`<div class="player-card"><div class="pc-top"><div class="pc-avatar">${initials(p.n)}</div><div><div class="pc-name">${p.n}</div><div class="pc-timer">${timerLabel(p.t)}</div></div><div class="pc-price"><strong>${priceLabel(p.p)}</strong>traening/saeson</div></div>${rows}</div>`}
+function renderSuggestions(list,q){
+  if(!list.length){suggestionsEl.innerHTML=`<div class="no-results-drop">Ingen spillere fundet for "${q}"</div>`;suggestionsEl.classList.add('visible');return}
+  suggestionsEl.innerHTML=list.slice(0,8).map((p,i)=>`<div class="suggestion-item" data-idx="${i}" onclick="selectPlayer('${p.n.replace(/'/g,"\\'")}')"><div class="suggestion-avatar">${initials(p.n)}</div><span class="suggestion-name">${p.n}</span><span class="suggestion-meta">${assignedFor(p.n).length||'Afventer'} hold</span></div>`).join('');
+  suggestionsEl.classList.add('visible');
+}
+function selectPlayer(name){
+  const p=players.find(x=>x.n===name);if(!p)return;
+  selectedPlayer=p;input.value=p.n;suggestionsEl.classList.remove('visible');renderResult(p);renderSchedule();window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderResult(p){
+  const assigned=assignedFor(p.n);
+  if(!assigned.length){
+    resultsEl.innerHTML=`<div class="player-card"><div class="pc-top"><div class="pc-avatar">${initials(p.n)}</div><div><div class="pc-name">${p.n}</div><div class="pc-timer">${timerLabel(p.t)}</div></div><div class="pc-price"><strong>${priceLabel(p.p)}</strong>træning/sæson</div></div></div><div class="unplaced-card"><div class="uc-title">Afventer holdplacering</div><div class="uc-body">${p.n} er registreret til vintertræning, men har ikke fået en endelig holdplacering endnu.</div></div>`;
+    return;
+  }
+  const rows=assigned.map(nr=>{const h=holdByNr(nr);if(!h)return'';const members=membersForHold(nr).filter(m=>m!==p.n);const chips=members.length?members.map(m=>`<div class="member-chip" onclick="selectPlayer('${m.replace(/'/g,"\\'")}')"><div class="chip-av">${initials(m)}</div>${m}</div>`).join(''):'<div class="empty-group">Ingen andre spillere på dette hold endnu</div>';return `<div class="hold-row"><div class="hold-hero"><div class="hold-number-block"><div class="hold-number-label">Hold</div><div class="hold-number-big">${h.nr}</div></div><div class="hold-details"><div class="hold-day-time"><span class="day-chip">${h.day}</span><span class="time-chip">${h.time}</span><span class="wish-tag">${h.location}</span></div></div></div><div class="hold-info"><div class="group-label">Øvrige spillere på holdet</div><div class="member-chips">${chips}</div></div></div>`}).join('');
+  resultsEl.innerHTML=`<div class="player-card"><div class="pc-top"><div class="pc-avatar">${initials(p.n)}</div><div><div class="pc-name">${p.n}</div><div class="pc-timer">${timerLabel(p.t)}</div></div><div class="pc-price"><strong>${priceLabel(p.p)}</strong>træning/sæson</div></div>${rows}</div>`;
+}
 input.addEventListener('input',()=>{const q=input.value.trim();focusedIdx=-1;if(q.length<2){suggestionsEl.innerHTML='';suggestionsEl.classList.remove('visible');return}filteredPlayers=players.filter(p=>normalize(p.n).includes(normalize(q)));renderSuggestions(filteredPlayers,q)});
 document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))suggestionsEl.classList.remove('visible')});
 load();
