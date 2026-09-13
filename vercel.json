@@ -8,11 +8,15 @@
     },
     {
       "source": "/winter",
-      "destination": "/vintertraening.html"
+      "destination": "/winter.html"
     },
     {
       "source": "/winter-schedule",
-      "destination": "/vinter-skema.html"
+      "destination": "/winter-schedule.html"
+    },
+    {
+      "source": "/summer",
+      "destination": "/TTK_Holdsoegning_TEST.html"
     }
   ]
 }
