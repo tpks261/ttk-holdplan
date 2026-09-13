@@ -19,7 +19,7 @@ h1{font-size:28px;font-weight:760;margin-bottom:8px}.sub{font-size:14px;color:rg
 .title{font-size:19px;font-weight:850;color:var(--navy)}
 .text{font-size:13px;line-height:1.55;color:var(--muted);flex:1}
 .action{font-size:13px;font-weight:900;color:var(--blue)}
-.note{margin-top:18px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.55;color:var(--muted)}
+.admin-link{text-align:center;margin-top:18px}.admin-link a{font-size:13px;font-weight:850;color:var(--muted);text-decoration:none}.admin-link a:hover{color:var(--blue)}
 @media(max-width:760px){.grid{grid-template-columns:1fr}h1{font-size:24px}}
 </style>
 </head>
@@ -27,7 +27,7 @@ h1{font-size:28px;font-weight:760;margin-bottom:8px}.sub{font-size:14px;color:rg
 <header class="top">
   <div class="club">Taarbæk Tennis Klub</div>
   <h1>Holdplan</h1>
-  <div class="sub">Vintertræning, holdoversigt og admin</div>
+  <div class="sub">Vintertræning, sommertræning og holdoversigt</div>
 </header>
 <main class="wrap">
   <section class="grid" aria-label="Vælg indgang">
@@ -37,20 +37,20 @@ h1{font-size:28px;font-weight:760;margin-bottom:8px}.sub{font-size:14px;color:rg
       <div class="text">Søg navn og se de endelige vinterhold, når Jacob har godkendt tildelingerne.</div>
       <div class="action">Åbn vintertræning</div>
     </a>
+    <a class="card" href="/summer">
+      <div class="label">Medlemmer</div>
+      <div class="title">Sommertræning</div>
+      <div class="text">Søg navn og se de aktive sommerhold for sæsonen.</div>
+      <div class="action">Åbn sommertræning</div>
+    </a>
     <a class="card" href="/winter-schedule">
       <div class="label">Forældre</div>
       <div class="title">Holdoversigt</div>
       <div class="text">Se vinterens holdnumre fordelt på dag, tidspunkt og lokation.</div>
       <div class="action">Åbn holdoversigt</div>
     </a>
-    <a class="card" href="/admin">
-      <div class="label">Admin</div>
-      <div class="title">Tildeling</div>
-      <div class="text">Log ind med godkendt Google-konto, upload vinter-CSV og lav de endelige tildelinger.</div>
-      <div class="action">Åbn admin</div>
-    </a>
   </section>
-  <div class="note">Den aktive sommerløsning ligger fortsat i de eksisterende filer og dataark. Denne Vercel-indgang bruger vinterdata ved siden af, så vi kan teste uden at blande sæsonerne.</div>
+  <p class="admin-link"><a href="/admin">Admin</a></p>
 </main>
 </body>
 </html>
