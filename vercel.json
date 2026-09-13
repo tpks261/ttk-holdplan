@@ -1,0 +1,18 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/winter",
+      "destination": "/vintertraening.html"
+    },
+    {
+      "source": "/winter-schedule",
+      "destination": "/vinter-skema.html"
+    }
+  ]
+}
