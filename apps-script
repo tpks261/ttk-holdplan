@@ -1,8 +1,14 @@
 function doGet(e) {
   const p = (e && e.parameter) || {};
+  const basePayload = {
+    season: p.season,
+    token: p.token
+  };
 
   if (p.action === 'toggleExtraHold') {
     return handleExtraHoldToggle_({
+      season: basePayload.season,
+      token: basePayload.token,
       hold: p.hold,
       active: p.active === 'true'
     });
@@ -10,6 +16,8 @@ function doGet(e) {
 
   if (p.action === 'save') {
     return handleAssignmentSave_({
+      season: basePayload.season,
+      token: basePayload.token,
       name: p.name,
       holds: p.holds || ''
     });
@@ -17,6 +25,8 @@ function doGet(e) {
 
   if (p.action === 'saveLevel') {
     return handleLevelSave_({
+      season: basePayload.season,
+      token: basePayload.token,
       name: p.name,
       level: p.level || ''
     });
@@ -24,6 +34,8 @@ function doGet(e) {
 
   if (p.action === 'swapRequest') {
     return handleSwapRequest_({
+      season: basePayload.season,
+      token: basePayload.token,
       name: p.name,
       fromHold: p.fromHold,
       toHold: p.toHold
@@ -32,16 +44,18 @@ function doGet(e) {
 
   if (p.action === 'reviewSwap') {
     return handleSwapReview_({
+      season: basePayload.season,
+      token: basePayload.token,
       id: p.id,
       decision: p.decision
     });
   }
 
   if (p.action === 'importCSV') {
-    return handleCsvImport_(p.csv ? decodeURIComponent(p.csv) : '');
+    return handleCsvImport_(p.csv ? decodeURIComponent(p.csv) : '', basePayload);
   }
 
-  return buildLoadResponse_();
+  return buildLoadResponse_(basePayload);
 }
 
 function doPost(e) {
@@ -49,11 +63,11 @@ function doPost(e) {
     const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
 
     if (payload.type === 'load') {
-      return buildLoadResponse_();
+      return buildLoadResponse_(payload);
     }
 
     if (payload.type === 'importCSV') {
-      return handleCsvImport_(payload.data);
+      return handleCsvImport_(payload.data, payload);
     }
 
     if (payload.type === 'addPlayer') {
@@ -86,11 +100,55 @@ function doPost(e) {
   }
 }
 
-function buildLoadResponse_() {
+function normalizeSeason_(value) {
+  const season = String(value || 'summer').trim().toLowerCase();
+  return season === 'winter' ? 'winter' : 'summer';
+}
+
+function sheetNamesFor_(seasonValue) {
+  const season = normalizeSeason_(seasonValue);
+  if (season === 'winter') {
+    return {
+      season: 'winter',
+      players: 'WinterPlayers',
+      assignments: 'WinterAssignments',
+      extraHolds: 'WinterExtraHolds',
+      swapRequests: 'WinterSwapRequests'
+    };
+  }
+
+  return {
+    season: 'summer',
+    players: 'Players',
+    assignments: 'Assignments',
+    extraHolds: 'ExtraHolds',
+    swapRequests: 'SwapRequests'
+  };
+}
+
+function writeAuthError_(payload) {
+  const season = normalizeSeason_(payload && payload.season);
+  if (season !== 'winter') return '';
+
+  const expected = PropertiesService.getScriptProperties().getProperty('TTK_BACKEND_TOKEN');
+  if (!expected) return 'Winter backend token is not configured';
+
+  const actual = String((payload && payload.token) || '');
+  return actual === expected ? '' : 'Unauthorized winter write';
+}
+
+function getSheetForRead_(ss, name, headers, shouldCreate) {
+  if (shouldCreate) return getOrCreateSheet_(ss, name, headers);
+  return ss.getSheetByName(name);
+}
+
+function buildLoadResponse_(payload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const playersSheet = ss.getSheetByName("Players");
-  const assignmentsSheet = ss.getSheetByName("Assignments");
-  const extraHoldsSheet = ss.getSheetByName("ExtraHolds");
+  const names = sheetNamesFor_(payload && payload.season);
+  const isWinter = names.season === 'winter';
+  const playersSheet = getSheetForRead_(ss, names.players, playersHeaders_(), isWinter);
+  const assignmentsSheet = getSheetForRead_(ss, names.assignments, assignmentsHeaders_(), isWinter);
+  const extraHoldsSheet = getSheetForRead_(ss, names.extraHolds, extraHoldsHeaders_(), isWinter);
 
   if (!playersSheet || !assignmentsSheet || !extraHoldsSheet) {
     return jsonOut_({
@@ -102,7 +160,7 @@ function buildLoadResponse_() {
   const playersData = playersSheet.getDataRange().getValues();
   const assignmentsData = assignmentsSheet.getDataRange().getValues();
   const extraHoldsData = extraHoldsSheet.getDataRange().getValues();
-  const swapRequests = getPendingSwapRequests_(ss);
+  const swapRequests = getPendingSwapRequests_(ss, names.swapRequests);
 
   const players = [];
 
@@ -164,6 +222,7 @@ function buildLoadResponse_() {
 
   return jsonOut_({
   ok: true,
+  season: names.season,
   players: players,
   assignments: assignments,
   extraHolds: extraHolds,
@@ -173,8 +232,12 @@ function buildLoadResponse_() {
 }
 
 function handleAssignmentSave_(payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Assignments');
+  const names = sheetNamesFor_(payload && payload.season);
+  const sheet = getOrCreateSheet_(ss, names.assignments, assignmentsHeaders_());
 
   if (!sheet) return jsonOut_({ ok: false, error: 'Assignments sheet not found' });
 
@@ -200,9 +263,13 @@ function handleAssignmentSave_(payload) {
 }
 
 function handleManualPlayerAdd_(payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const playersSheet = ss.getSheetByName('Players');
-  const assignmentsSheet = ss.getSheetByName('Assignments');
+  const names = sheetNamesFor_(payload && payload.season);
+  const playersSheet = getOrCreateSheet_(ss, names.players, playersHeaders_());
+  const assignmentsSheet = getOrCreateSheet_(ss, names.assignments, assignmentsHeaders_());
 
   if (!playersSheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
   if (!assignmentsSheet) return jsonOut_({ ok: false, error: 'Assignments sheet not found' });
@@ -265,8 +332,12 @@ function handleManualPlayerAdd_(payload) {
 }
 
 function handleLevelSave_(payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Players');
+  const names = sheetNamesFor_(payload && payload.season);
+  const sheet = getOrCreateSheet_(ss, names.players, playersHeaders_());
 
   if (!sheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
 
@@ -290,8 +361,12 @@ function handleLevelSave_(payload) {
 }
 
 function handleExtraHoldToggle_(payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('ExtraHolds');
+  const names = sheetNamesFor_(payload && payload.season);
+  const sheet = getOrCreateSheet_(ss, names.extraHolds, extraHoldsHeaders_());
 
   if (!sheet) {
     return jsonOut_({
@@ -337,9 +412,13 @@ function handleExtraHoldToggle_(payload) {
 });
 }
 
-function handleCsvImport_(csvText) {
+function handleCsvImport_(csvText, payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const playersSheet = ss.getSheetByName('Players');
+  const names = sheetNamesFor_(payload && payload.season);
+  const playersSheet = getOrCreateSheet_(ss, names.players, playersHeaders_());
 
   if (!playersSheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
   if (!csvText || !String(csvText).trim()) return jsonOut_({ ok: false, error: 'CSV data is empty' });
@@ -477,8 +556,31 @@ function getOrCreateSheet_(ss, name, headers) {
   return sheet;
 }
 
-function ensureSwapRequestsSheet_(ss) {
-  return getOrCreateSheet_(ss, 'SwapRequests', [
+function playersHeaders_() {
+  return [
+    'Name',
+    'Timer',
+    'Price',
+    'HoldWishes',
+    'DayTimeWishes',
+    'Unplaced',
+    'Note',
+    'Birthdate',
+    'Level',
+    'Age'
+  ];
+}
+
+function assignmentsHeaders_() {
+  return ['Name', 'Holds'];
+}
+
+function extraHoldsHeaders_() {
+  return ['Hold', 'Active'];
+}
+
+function swapRequestsHeaders_() {
+  return [
     'Id',
     'Timestamp',
     'Name',
@@ -486,11 +588,15 @@ function ensureSwapRequestsSheet_(ss) {
     'ToHold',
     'Status',
     'DecidedAt'
-  ]);
+  ];
 }
 
-function getPendingSwapRequests_(ss) {
-  const sheet = ensureSwapRequestsSheet_(ss);
+function ensureSwapRequestsSheet_(ss, sheetName) {
+  return getOrCreateSheet_(ss, sheetName || 'SwapRequests', swapRequestsHeaders_());
+}
+
+function getPendingSwapRequests_(ss, sheetName) {
+  const sheet = ensureSwapRequestsSheet_(ss, sheetName);
   const values = sheet.getDataRange().getValues();
   const requests = [];
 
@@ -540,8 +646,8 @@ function baseHold_(hold) {
   return Math.floor(Number(hold));
 }
 
-function getActiveExtraHolds_(ss) {
-  const sheet = ss.getSheetByName('ExtraHolds');
+function getActiveExtraHolds_(ss, sheetName) {
+  const sheet = ss.getSheetByName(sheetName || 'ExtraHolds');
   if (!sheet) return [];
 
   const values = sheet.getDataRange().getValues();
@@ -556,10 +662,10 @@ function getActiveExtraHolds_(ss) {
   return holds;
 }
 
-function getCandidateHoldsForBase_(ss, hold) {
+function getCandidateHoldsForBase_(ss, hold, extraHoldsSheetName) {
   const base = String(baseHold_(hold));
   const result = [base];
-  getActiveExtraHolds_(ss).forEach(extra => {
+  getActiveExtraHolds_(ss, extraHoldsSheetName).forEach(extra => {
     if (String(extra).startsWith(base + '.') && !result.includes(String(extra))) {
       result.push(String(extra));
     }
@@ -567,11 +673,11 @@ function getCandidateHoldsForBase_(ss, hold) {
   return result.sort((a, b) => Number(a) - Number(b));
 }
 
-function chooseAvailableHoldForBase_(ss, targetBase, playerName) {
-  const sheet = ss.getSheetByName('Assignments');
+function chooseAvailableHoldForBase_(ss, targetBase, playerName, names) {
+  const sheet = ss.getSheetByName((names && names.assignments) || 'Assignments');
   if (!sheet) throw new Error('Assignments sheet not found');
 
-  const candidates = getCandidateHoldsForBase_(ss, targetBase);
+  const candidates = getCandidateHoldsForBase_(ss, targetBase, names && names.extraHolds);
   const counts = {};
   candidates.forEach(h => counts[h] = 0);
 
@@ -595,8 +701,12 @@ function chooseAvailableHoldForBase_(ss, targetBase, playerName) {
 }
 
 function handleSwapRequest_(payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ensureSwapRequestsSheet_(ss);
+  const names = sheetNamesFor_(payload && payload.season);
+  const sheet = ensureSwapRequestsSheet_(ss, names.swapRequests);
 
   const name = String(payload.name || '').trim();
   const fromHold = String(payload.fromHold || '').trim();
@@ -612,9 +722,13 @@ function handleSwapRequest_(payload) {
 }
 
 function handleSwapReview_(payload) {
+  const authError = writeAuthError_(payload);
+  if (authError) return jsonOut_({ ok: false, error: authError });
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const requestSheet = ensureSwapRequestsSheet_(ss);
-  const assignmentsSheet = ss.getSheetByName('Assignments');
+  const names = sheetNamesFor_(payload && payload.season);
+  const requestSheet = ensureSwapRequestsSheet_(ss, names.swapRequests);
+  const assignmentsSheet = getOrCreateSheet_(ss, names.assignments, assignmentsHeaders_());
 
   if (!assignmentsSheet) return jsonOut_({ ok: false, error: 'Assignments sheet not found' });
 
@@ -664,7 +778,7 @@ function handleSwapReview_(payload) {
 
     const fromBase = baseHold_(fromHold);
     const toBase = baseHold_(toHold);
-    const newTargetHold = chooseAvailableHoldForBase_(ss, toBase, name);
+    const newTargetHold = chooseAvailableHoldForBase_(ss, toBase, name, names);
     const filteredHolds = holds.filter(hold => baseHold_(hold) !== fromBase);
 
     if (!filteredHolds.includes(newTargetHold)) filteredHolds.push(newTargetHold);
@@ -678,18 +792,7 @@ function handleSwapReview_(payload) {
 }
 
 function ensurePlayersHeaders_(sheet) {
-  const headers = [
-    'Name',
-    'Timer',
-    'Price',
-    'HoldWishes',
-    'DayTimeWishes',
-    'Unplaced',
-    'Note',
-    'Birthdate',
-    'Level',
-    'Age'
-  ];
+  const headers = playersHeaders_();
 
   // Always write the first 10 headers. This is intentional and safe.
   // It does not touch data rows. It only makes sure the sheet structure exists.
@@ -697,7 +800,8 @@ function ensurePlayersHeaders_(sheet) {
 }
 
 function ensureAssignmentsHeaders_(sheet) {
-  sheet.getRange(1, 1, 1, 2).setValues([['Name', 'Holds']]);
+  const headers = assignmentsHeaders_();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 
 function parseWishData_(text) {
