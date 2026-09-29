@@ -66,6 +66,8 @@ function doPost(e) {
       return buildLoadResponse_(payload);
     }
 
+    if (payload.type === 'saveAdminSettings') return handleAdminSettingsSave_(payload);
+
     if (payload.type === 'importCSV') {
       return handleCsvImport_(payload.data, payload);
     }
@@ -227,11 +229,13 @@ function buildLoadResponse_(payload) {
   assignments: assignments,
   extraHolds: extraHolds,
   extraHoldOptions: extraHoldOptions,
-  swapRequests: swapRequests
+  swapRequests: swapRequests,
+  adminSettings: readAdminSettings_(names.season),
+  capabilities: { adminSettings: true, assignmentValidation: true }
 });
 }
 
-function handleAssignmentSave_(payload) {
+function writeAssignmentRow_(payload) {
   const authError = writeAuthError_(payload);
   if (authError) return jsonOut_({ ok: false, error: authError });
 
@@ -412,7 +416,7 @@ function handleExtraHoldToggle_(payload) {
 });
 }
 
-function handleCsvImport_(csvText, payload) {
+function importCsvRows_(csvText, payload) {
   const authError = writeAuthError_(payload);
   if (authError) return jsonOut_({ ok: false, error: authError });
 
@@ -425,7 +429,7 @@ function handleCsvImport_(csvText, payload) {
 
   ensurePlayersHeaders_(playersSheet);
 
-  const rows = Utilities.parseCsv(csvText, ';');
+  const rows = parseAdminCsv_(csvText);
   if (!rows || rows.length < 2) return jsonOut_({ ok: false, error: 'CSV has no data rows' });
 
   let headerRowIndex = -1;
@@ -471,6 +475,7 @@ function handleCsvImport_(csvText, payload) {
     const row = rows[i];
     const name = String(row[idxNavn] || '').trim();
     if (!name) continue;
+    if (payload && payload.preserveExisting && Object.keys(existingMap).some(n => adminNameKey_(n) === adminNameKey_(name))) continue;
 
     const meddelelse = idxMeddelelse > -1 ? String(row[idxMeddelelse] || '').trim() : '';
     const productText = idxProdukt > -1 ? String(row[idxProdukt] || '').trim() : '';
@@ -536,6 +541,7 @@ function handleCsvImport_(csvText, payload) {
       playersSheet.getRange(existingMap[name], 1, 1, outRow.length).setValues([outRow]);
     } else {
       playersSheet.appendRow(outRow);
+      existingMap[name] = playersSheet.getLastRow();
     }
 
     count++;
@@ -694,7 +700,7 @@ function chooseAvailableHoldForBase_(ss, targetBase, playerName, names) {
 
   for (let i = 0; i < candidates.length; i++) {
     const hold = candidates[i];
-    if ((counts[hold] || 0) < 6) return hold;
+    if ((counts[hold] || 0) < adminCapacity_(names && names.season || 'summer', hold)) return hold;
   }
 
   throw new Error('Target hold is full');
@@ -721,7 +727,7 @@ function handleSwapRequest_(payload) {
   return jsonOut_({ ok: true, id: id });
 }
 
-function handleSwapReview_(payload) {
+function reviewSwapRows_(payload) {
   const authError = writeAuthError_(payload);
   if (authError) return jsonOut_({ ok: false, error: authError });
 
@@ -778,6 +784,9 @@ function handleSwapReview_(payload) {
 
     const fromBase = baseHold_(fromHold);
     const toBase = baseHold_(toHold);
+    if (!holds.some(h => baseHold_(h) === fromBase)) throw new Error('Spilleren er ikke længere på det oprindelige hold');
+    if (!ADMIN_DEFAULT_SCHEDULES_[names.season].some(h => h.id === String(toBase))) throw new Error('Målholdet findes ikke i sæsonen');
+    if (fromBase === toBase || holds.some(h => baseHold_(h) === toBase)) throw new Error('Målholdet er allerede valgt');
     const newTargetHold = chooseAvailableHoldForBase_(ss, toBase, name, names);
     const filteredHolds = holds.filter(hold => baseHold_(hold) !== fromBase);
 
@@ -991,8 +1000,108 @@ function findHeaderIndex_(header, candidates) {
   return -1;
 }
 
+// Settings are additive Script Properties, scoped by season. Reading never seeds or rewrites sheets.
+function readAdminSettings_(season) {
+  const raw = PropertiesService.getScriptProperties().getProperty('TTK_ADMIN_SETTINGS_' + normalizeSeason_(season));
+  if (!raw) return { version: 0, holds: {} };
+  const value = JSON.parse(raw);
+  if (!value || !value.holds || !Number.isInteger(value.version)) throw new Error('Ugyldige holdindstillinger. Kontakt admin.');
+  return value;
+}
+
+function withAdminLock_(work) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try { return work(); } finally { lock.releaseLock(); }
+}
+
+function adminNameKey_(value) { return String(value || '').normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+function adminCapacity_(season, hold) {
+  const value = readAdminSettings_(season).holds[String(hold)];
+  if (value) return value.capacity;
+  return normalizeSeason_(season) === 'winter' ? 4 : 6;
+}
+
+function handleAdminSettingsSave_(payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty('TTK_BACKEND_TOKEN');
+  if (!expected || payload.token !== expected) throw new Error('Unauthorized settings write');
+  if (!['summer', 'winter'].includes(payload.season)) throw new Error('Invalid season');
+  return withAdminLock_(function () {
+    const id = String(payload.holdId || '');
+    const base = ADMIN_DEFAULT_SCHEDULES_[payload.season].find(h => h.id === String(Math.floor(Number(id))));
+    const ss = SpreadsheetApp.getActiveSpreadsheet(), names = sheetNamesFor_(payload.season);
+    if (!base || (id !== base.id && !getActiveExtraHolds_(ss, names.extraHolds).includes(id))) throw new Error('Ukendt hold');
+    const capacity = Number(payload.capacity), court = String(payload.court || '').trim();
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100 || !court || court.length > 100) throw new Error('Angiv bane og et gyldigt antal spillere');
+    const settings = readAdminSettings_(payload.season);
+    if (settings.version !== payload.expectedVersion) throw new Error('Indstillingerne er ændret af en anden. Genindlæs.');
+    settings.holds[id] = { court: court, capacity: capacity };
+    settings.version++;
+    PropertiesService.getScriptProperties().setProperty('TTK_ADMIN_SETTINGS_' + payload.season, JSON.stringify(settings));
+    return jsonOut_({ ok: true, adminSettings: settings });
+  });
+}
+
+function handleAssignmentSave_(payload) {
+  const error = writeAuthError_(payload);
+  if (error) return jsonOut_({ ok: false, error: error });
+  return withAdminLock_(function () {
+    // Legacy summer clients do not send expectedHolds. Their existing behavior remains intact.
+    if (typeof payload.expectedHolds === 'string') {
+      const ss = SpreadsheetApp.getActiveSpreadsheet(), names = sheetNamesFor_(payload.season);
+      const ps = ss.getSheetByName(names.players), as = ss.getSheetByName(names.assignments);
+      if (!ps || !as) throw new Error('Sæsonens data findes ikke');
+      const player = ps.getDataRange().getValues().slice(1).find(r => String(r[0]).trim() === (payload.playerName || payload.name));
+      if (!player) throw new Error('Spilleren findes ikke');
+      const rows = as.getDataRange().getValues().slice(1);
+      const row = rows.find(r => String(r[0]).trim() === payload.name);
+      const parse = value => String(value || '').split(/[;,]/).map(v => v.trim()).filter(Boolean);
+      const before = parse(row && row[1]), next = parse(payload.holds);
+      const comparable = values => values.slice().sort().join(',');
+      if (comparable(before) !== comparable(parse(payload.expectedHolds))) throw new Error('Tildelingen er ændret. Genindlæs.');
+      if (new Set(next).size !== next.length) throw new Error('Dubleret hold');
+      const added = next.filter(id => !before.includes(id));
+      if (added.length && next.length > Math.max(1, Number(player[1]) || 1)) throw new Error('For mange hold til spilleren');
+      const extras = getActiveExtraHolds_(ss, names.extraHolds);
+      added.forEach(id => {
+        const base = ADMIN_DEFAULT_SCHEDULES_[names.season].find(h => h.id === String(Math.floor(Number(id))));
+        if (!base || (id !== base.id && !extras.includes(id))) throw new Error('Ukendt hold');
+        if (next.some(other => other !== id && Math.floor(Number(other)) === Number(base.id))) throw new Error('Grundholdet er allerede valgt');
+        const occupied = rows.filter(r => String(r[0]).trim() !== payload.name && parse(r[1]).includes(id)).length;
+        if (occupied >= adminCapacity_(names.season, id)) throw new Error('Holdet er fyldt');
+      });
+    }
+    return writeAssignmentRow_(payload);
+  });
+}
+
+function parseAdminCsv_(text) {
+  let best = null, width = 0;
+  [';', ',', '\t'].forEach(delimiter => {
+    try {
+      const rows = Utilities.parseCsv(String(text).replace(/^\uFEFF/, ''), delimiter);
+      const header = rows.find(row => row.some(cell => ['navn', 'name'].includes(adminNameKey_(cell))));
+      if (header && header.length > width) { best = rows; width = header.length; }
+    } catch (_) { /* Try the next delimiter. */ }
+  });
+  if (!best) throw new Error('Kunne ikke finde Navn/Name. Kontrollér CSV-filens kolonneoverskrifter.');
+  return best;
+}
+
+function handleSwapReview_(payload) {
+  return withAdminLock_(function () { return reviewSwapRows_(payload); });
+}
+
+function handleCsvImport_(text, payload) {
+  return withAdminLock_(function () { return importCsvRows_(text, payload); });
+}
+
 function jsonOut_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+// Defaults mirror admin-assets/default-schedules.json; no player data is seeded.
+const ADMIN_DEFAULT_SCHEDULES_ = {"summer":[{"id":"1","day":"Mandag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"2","day":"Mandag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"3","day":"Mandag","time":"15:00–16:00","group":"U10/U12","court":"Taarbæk","capacity":6},{"id":"4","day":"Mandag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"5","day":"Mandag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"6","day":"Mandag","time":"16:00–17:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"7","day":"Mandag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"8","day":"Mandag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"9","day":"Mandag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"10","day":"Tirsdag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"11","day":"Tirsdag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"12","day":"Tirsdag","time":"15:00–16:00","group":"U10/U12","court":"Taarbæk","capacity":6},{"id":"13","day":"Tirsdag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"14","day":"Tirsdag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"15","day":"Tirsdag","time":"16:00–17:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"16","day":"Tirsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"17","day":"Tirsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"18","day":"Tirsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"19","day":"Onsdag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"20","day":"Onsdag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"21","day":"Onsdag","time":"15:00–16:00","group":"U10/U12","court":"Taarbæk","capacity":6},{"id":"22","day":"Onsdag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"23","day":"Onsdag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"24","day":"Onsdag","time":"16:00–17:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"25","day":"Onsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"26","day":"Onsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"27","day":"Onsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"28","day":"Torsdag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"29","day":"Torsdag","time":"15:00–16:00","group":"U8/U10","court":"Taarbæk","capacity":6},{"id":"30","day":"Torsdag","time":"15:00–16:00","group":"U10/U12","court":"Taarbæk","capacity":6},{"id":"31","day":"Torsdag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"32","day":"Torsdag","time":"16:00–17:00","group":"U12/U14","court":"Taarbæk","capacity":6},{"id":"33","day":"Torsdag","time":"16:00–17:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"34","day":"Torsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"35","day":"Torsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"36","day":"Torsdag","time":"17:00–18:00","group":"U14/Ungsenior","court":"Taarbæk","capacity":6},{"id":"37","day":"Fredag","time":"15:00–16:00","group":"Open","court":"Taarbæk","capacity":6},{"id":"38","day":"Fredag","time":"15:00–16:00","group":"Open","court":"Taarbæk","capacity":6},{"id":"39","day":"Fredag","time":"15:00–16:00","group":"Open","court":"Taarbæk","capacity":6},{"id":"40","day":"Fredag","time":"16:00–17:00","group":"Open","court":"Taarbæk","capacity":6},{"id":"41","day":"Fredag","time":"16:00–17:00","group":"Open","court":"Taarbæk","capacity":6},{"id":"42","day":"Fredag","time":"16:00–17:00","group":"Open","court":"Taarbæk","capacity":6}],"winter":[{"id":"1","day":"Mandag","time":"15:00–16:00","group":"","court":"Lyngby","capacity":4},{"id":"2","day":"Mandag","time":"16:00–17:00","group":"","court":"Lyngby","capacity":4},{"id":"3","day":"Mandag","time":"17:00–18:00","group":"","court":"Lyngby","capacity":4},{"id":"4","day":"Tirsdag","time":"15:00–16:00","group":"","court":"Lyngby","capacity":4},{"id":"5","day":"Tirsdag","time":"16:00–17:00","group":"","court":"Lyngby","capacity":4},{"id":"6","day":"Tirsdag","time":"17:00–18:00","group":"","court":"Lyngby","capacity":4},{"id":"13","day":"Tirsdag","time":"17:00–18:00","group":"","court":"Taarbæk","capacity":4},{"id":"7","day":"Onsdag","time":"15:00–16:00","group":"","court":"Lyngby","capacity":4},{"id":"8","day":"Onsdag","time":"16:00–17:00","group":"","court":"Lyngby","capacity":4},{"id":"9","day":"Onsdag","time":"17:00–18:00","group":"","court":"Lyngby","capacity":4},{"id":"10","day":"Torsdag","time":"15:00–16:00","group":"","court":"Lyngby","capacity":4},{"id":"14","day":"Torsdag","time":"17:00–18:00","group":"","court":"Taarbæk","capacity":4},{"id":"11","day":"Fredag","time":"15:00–16:00","group":"","court":"Lyngby","capacity":4},{"id":"12","day":"Fredag","time":"16:00–17:00","group":"","court":"Lyngby","capacity":4},{"id":"15","day":"Fredag","time":"17:00–18:00","group":"","court":"Taarbæk","capacity":4}]};

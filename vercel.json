@@ -4,7 +4,11 @@
   "rewrites": [
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/admin-app.html"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/admin-app.html"
     },
     {
       "source": "/winter",

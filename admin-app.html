@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TTK Admin – Holdtildeling</title><link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/admin-assets/admin.css"><link rel="stylesheet" href="/admin-assets/season-admin.css">
+<script src="/admin-assets/model.js" defer></script><script src="/admin-assets/admin.js" defer></script>
+</head>
+<body>
+<section id="login" class="login-box"><h1>TTK Admin</h1><p id="login-message">Kontrollerer login…</p><a href="/api/auth/login">Log ind med Google</a></section>
+<div id="season-app" hidden>
+<header class="hdr"><div><h1>TTK Holdtildeling – Jacobs adminværktøj</h1><div class="hdr-sub">Taarbæk Tennis Klub · Ønsker → Jacobs tildeling → gemmes automatisk</div></div>
+<label class="season-label">Sæson<select id="season"><option value="winter">Vinter</option><option value="summer">Sommer</option></select></label>
+<div class="progress-wrap"><div id="progress-text" class="progress-text"></div><div class="progress-bar-outer"><div id="progress-bar" class="progress-bar-inner"></div></div></div>
+<a href="/">Startside</a><a href="/api/auth/logout">Log ud</a></header>
+<div id="save-status" class="feedback" role="status" aria-live="polite"></div>
+<nav class="admin-toolbar" aria-label="Admin navigation">
+<button data-view="dashboard" class="toolbar-btn">Dashboard</button><button data-view="players" class="toolbar-btn">Spillere</button><button data-view="schedule" class="toolbar-btn">Skemavisning</button><button data-view="settings" class="toolbar-btn">Baner og kapacitet</button><button data-view="add" class="toolbar-btn">Tilføj spiller</button><button data-view="swaps" class="toolbar-btn">Holdbytte</button><button data-view="csv" class="toolbar-btn">Upload CSV</button><button id="export" class="toolbar-btn">↓ Eksporter liste</button><button id="reload" class="toolbar-btn">Genindlæs</button>
+</nav>
+<main id="workspace"></main>
+</div>
+</body></html>

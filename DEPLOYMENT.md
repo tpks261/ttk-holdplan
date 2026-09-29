@@ -1,5 +1,47 @@
 # TTK vintertraening deployment
 
+## Fælles sæsonadmin (september 2026)
+
+`/admin` åbner nu `admin-app.html`, med sommeradminens farver og arbejdsgang,
+eksplicit sæsonvalg og de eksisterende dataark. De to tidligere filer
+`Admin.html` og `admin.html` bevares uændret i Git. De har kolliderende navne
+på en almindelig Mac-disk; stage derfor aldrig dem som en utilsigtet ændring.
+
+Et Git-push ændrer kun koden. Der køres ingen migration, nulstilling, import,
+prøvedata eller automatisk gemning ved opstart/sæsonskift. Den nye CSV-import
+forhåndsvises og tilføjer kun nye navne; eksisterende spillere springes over.
+Alle tildelinger, også ukendte holdnumre, bevares indtil en admin aktivt ændrer dem.
+
+### Aktivering af baner og kapacitet
+
+Vercel-udgaven kan læse eksisterende data og tildele hold med den tidligere
+Apps Script-version. For at gemme baner/kapaciteter og få låst validering af
+samtidige ændringer skal repoets `apps-script` aktiveres som en ny version af
+den **eksisterende** Apps Script-webapp. Bevar spreadsheet, deployment-URL,
+Script Properties og `TTK_BACKEND_TOKEN`. Kør ingen reset- eller seed-funktion.
+Vercel-push opdaterer ikke automatisk Apps Script.
+
+Holdindstillinger tilføjes først ved et aktivt klik på Gem og ligger i separate
+Script Properties: `TTK_ADMIN_SETTINGS_summer` og `TTK_ADMIN_SETTINGS_winter`.
+Disse ændrer ikke Players/Assignments-arkene. Hvis kapaciteten sænkes under
+belægningen, vises en advarsel, og ingen spillere fjernes. Manglende indstillinger
+læses med de eksisterende standarder (sommer 6, vinter 4); de skrives ikke ved load.
+Den nye admin viser en klar besked og deaktiverer indstillingsgemning, hvis
+backenden endnu ikke melder understøttelse. Godkendelse af holdbytte kræver også
+den nye backend, så vinterens kapacitet overholdes.
+
+Dette ændrer kun administrationen. De offentlige siders statiske skematekster
+og den gamle Google Sites-admin følger ikke de nye baneindstillinger automatisk.
+
+### Kontrol
+
+`node --test tests/admin.test.cjs` tester CSV, ønsker, sæsonadskillelse, bevarelse
+af eksisterende rækker, kapacitet og ændringskonflikter med isolerede data.
+`node tests/admin-ui.cjs` bruger Playwright og isolerede browserfixtures; ingen
+live API-kald foretages. Sæt evt. `CHROME_PATH` til en lokal Chrome-installation.
+Efter deployment kontrolleres `/admin` og offentlige datatællinger for begge
+sæsoner uden testskrivninger til live-arkene.
+
 Denne branch gør Vercel-frontenden klar til at bruge den rigtige backend uden at ændre den aktive sommerløsning.
 
 Den bruges også som test-branch for det nye Vercel-projekt, indtil vi aktivt vælger at merge eller flytte trafik.

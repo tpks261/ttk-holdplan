@@ -1,0 +1,462 @@
+{
+  "summer": [
+    {
+      "id": "1",
+      "day": "Mandag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "2",
+      "day": "Mandag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "3",
+      "day": "Mandag",
+      "time": "15:00–16:00",
+      "group": "U10/U12",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "4",
+      "day": "Mandag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "5",
+      "day": "Mandag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "6",
+      "day": "Mandag",
+      "time": "16:00–17:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "7",
+      "day": "Mandag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "8",
+      "day": "Mandag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "9",
+      "day": "Mandag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "10",
+      "day": "Tirsdag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "11",
+      "day": "Tirsdag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "12",
+      "day": "Tirsdag",
+      "time": "15:00–16:00",
+      "group": "U10/U12",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "13",
+      "day": "Tirsdag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "14",
+      "day": "Tirsdag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "15",
+      "day": "Tirsdag",
+      "time": "16:00–17:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "16",
+      "day": "Tirsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "17",
+      "day": "Tirsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "18",
+      "day": "Tirsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "19",
+      "day": "Onsdag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "20",
+      "day": "Onsdag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "21",
+      "day": "Onsdag",
+      "time": "15:00–16:00",
+      "group": "U10/U12",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "22",
+      "day": "Onsdag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "23",
+      "day": "Onsdag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "24",
+      "day": "Onsdag",
+      "time": "16:00–17:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "25",
+      "day": "Onsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "26",
+      "day": "Onsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "27",
+      "day": "Onsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "28",
+      "day": "Torsdag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "29",
+      "day": "Torsdag",
+      "time": "15:00–16:00",
+      "group": "U8/U10",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "30",
+      "day": "Torsdag",
+      "time": "15:00–16:00",
+      "group": "U10/U12",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "31",
+      "day": "Torsdag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "32",
+      "day": "Torsdag",
+      "time": "16:00–17:00",
+      "group": "U12/U14",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "33",
+      "day": "Torsdag",
+      "time": "16:00–17:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "34",
+      "day": "Torsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "35",
+      "day": "Torsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "36",
+      "day": "Torsdag",
+      "time": "17:00–18:00",
+      "group": "U14/Ungsenior",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "37",
+      "day": "Fredag",
+      "time": "15:00–16:00",
+      "group": "Open",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "38",
+      "day": "Fredag",
+      "time": "15:00–16:00",
+      "group": "Open",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "39",
+      "day": "Fredag",
+      "time": "15:00–16:00",
+      "group": "Open",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "40",
+      "day": "Fredag",
+      "time": "16:00–17:00",
+      "group": "Open",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "41",
+      "day": "Fredag",
+      "time": "16:00–17:00",
+      "group": "Open",
+      "court": "Taarbæk",
+      "capacity": 6
+    },
+    {
+      "id": "42",
+      "day": "Fredag",
+      "time": "16:00–17:00",
+      "group": "Open",
+      "court": "Taarbæk",
+      "capacity": 6
+    }
+  ],
+  "winter": [
+    {
+      "id": "1",
+      "day": "Mandag",
+      "time": "15:00–16:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "2",
+      "day": "Mandag",
+      "time": "16:00–17:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "3",
+      "day": "Mandag",
+      "time": "17:00–18:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "4",
+      "day": "Tirsdag",
+      "time": "15:00–16:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "5",
+      "day": "Tirsdag",
+      "time": "16:00–17:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "6",
+      "day": "Tirsdag",
+      "time": "17:00–18:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "13",
+      "day": "Tirsdag",
+      "time": "17:00–18:00",
+      "group": "",
+      "court": "Taarbæk",
+      "capacity": 4
+    },
+    {
+      "id": "7",
+      "day": "Onsdag",
+      "time": "15:00–16:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "8",
+      "day": "Onsdag",
+      "time": "16:00–17:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "9",
+      "day": "Onsdag",
+      "time": "17:00–18:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "10",
+      "day": "Torsdag",
+      "time": "15:00–16:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "14",
+      "day": "Torsdag",
+      "time": "17:00–18:00",
+      "group": "",
+      "court": "Taarbæk",
+      "capacity": 4
+    },
+    {
+      "id": "11",
+      "day": "Fredag",
+      "time": "15:00–16:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "12",
+      "day": "Fredag",
+      "time": "16:00–17:00",
+      "group": "",
+      "court": "Lyngby",
+      "capacity": 4
+    },
+    {
+      "id": "15",
+      "day": "Fredag",
+      "time": "17:00–18:00",
+      "group": "",
+      "court": "Taarbæk",
+      "capacity": 4
+    }
+  ]
+}
