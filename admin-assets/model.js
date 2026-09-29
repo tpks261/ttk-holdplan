@@ -65,6 +65,7 @@
     return rows;
   }
   function parseCsv(text) {
+    if (String(text).includes('\uFFFD')) throw new Error('CSV-filen indeholder allerede beskadigede tegn (�). Brug den originale fil, så navn og ønsker bevares korrekt.');
     let best = null;
     for (const delimiter of [';', ',', '\t']) {
       let rows; try { rows = parseRows(text, delimiter); } catch (_) { continue; }
@@ -89,9 +90,28 @@
   function newPlayersCsv(text, existingNames) {
     const parsed = parseCsv(text), existing = new Set(existingNames.map(nameKey));
     const added = parsed.data.filter(row => !existing.has(nameKey(row[parsed.nameIndex])));
+    for (const row of added) {
+      const name = nameKey(row[parsed.nameIndex]);
+      if (existingNames.some(old => {
+        old = nameKey(old);
+        return old.includes('\uFFFD') && old.length === name.length && [...old].every((c, i) => c === '\uFFFD' || c === name[i]);
+      })) throw new Error('Navnet ' + row[parsed.nameIndex] + ' kan allerede findes med beskadigede tegn. Ret den eksisterende post fra originalfilen før import, så der ikke oprettes en dublet.');
+    }
     const rows = [...parsed.rows.slice(0, parsed.index + 1), ...added];
     const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
     return { csv, added: added.length, skipped: parsed.data.length - added.length, names: added.map(row => row[parsed.nameIndex]) };
   }
-  return { nameKey, holds, base, hours, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv };
+  function decodeCsv(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let text;
+    if (bytes[0] === 255 && bytes[1] === 254) text = new TextDecoder('utf-16le', { fatal: true }).decode(bytes);
+    else if (bytes[0] === 254 && bytes[1] === 255) text = new TextDecoder('utf-16be', { fatal: true }).decode(bytes);
+    else {
+      try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+      catch (_) { text = new TextDecoder('windows-1252', { fatal: true }).decode(bytes); }
+    }
+    if (text.includes('\uFFFD') || text.includes('\0')) throw new Error('Filen indeholder beskadigede tegn. Brug original-CSV’en.');
+    return text;
+  }
+  return { nameKey, holds, base, hours, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv, decodeCsv };
 });

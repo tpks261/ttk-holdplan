@@ -101,6 +101,7 @@
     const wishes = M.wishIds(p, displaySchedule()), filtered = visible(), index = filtered.indexOf(p);
     return `<div class="detail-header"><div><div class="dh-name">${esc(p.n)}</div><div class="dh-meta">${M.hours(p)} timer/uge${p.age ? ' · ' + esc(p.age) + ' år' : ''}${p.p ? ' · ' + esc(p.p) + ' kr./sæson' : ''}</div><div class="dh-meta">Tildelt ${p.a.length}/${M.hours(p)} hold: ${p.a.map(esc).join(', ') || 'Ingen endnu'}</div></div></div>
     <label class="level-field">Niveau<select id="level">${[...new Set([...levels, p.level || ''])].map(l => `<option value="${esc(l)}" ${l === (p.level || '') ? 'selected' : ''}>${esc(l || 'Vælg niveau')}</option>`).join('')}</select></label>
+    ${/[\uFFFD]/.test(p.n + (p.note || '')) ? '<div class="warning">Navn eller ønsker indeholder beskadigede tegn fra en tidligere import. De skal rettes fra original-CSV’en; tildelingen er bevaret.</div>' : ''}
     ${p.note ? `<div class="warning"><strong>Besked fra forældre</strong><div class="note-text">${esc(p.note)}</div></div>` : ''}
     ${mismatch(p) ? '<div class="warning">⚠ Tildelingen matcher ikke spillerens registrerede ønsker.</div>' : ''}
     ${(p.dw || []).length ? `<p class="muted">Dag-/tidsønsker: ${p.dw.map(w => esc(M.formatWish(w))).join(' · ')}</p>` : ''}
@@ -178,8 +179,7 @@
       const season = state.season; const input = e.target;
       try {
         if (file.size > 2 * 1024 * 1024) throw new Error('CSV-filen må højst være 2 MB.');
-        const buffer = await file.arrayBuffer(); let text = new TextDecoder('utf-8').decode(buffer);
-        if (text.includes('\uFFFD')) text = new TextDecoder('windows-1252').decode(buffer);
+        const text = M.decodeCsv(await file.arrayBuffer());
         if (season !== state.season || !input.isConnected) return;
         const preview = M.newPlayersCsv(text, state.players.map(p => p.n));
         state.csv = text;

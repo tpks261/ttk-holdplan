@@ -78,6 +78,9 @@ const root = path.resolve(__dirname, '..');
     await page.getByRole('button', { name: 'Baner og kapacitet', exact: true }).click();
     assert.match(await page.locator('#workspace').innerText(), /Apps Script-version først aktiveres/);
     assert.equal(await page.locator('[data-settings="1"] button').isDisabled(), true);
+    await page.getByRole('button', { name: 'Upload CSV', exact: true }).click();
+    await page.locator('#csv-file').setInputFiles({name:'dansk.csv',mimeType:'text/csv',buffer:Buffer.from('Navn;Meddelelse\nÆgir Øster;Ønsker træning på torsdag','latin1')});
+    await page.locator('#csv-preview').getByText('Ægir Øster', {exact:true}).waitFor();
     assert.deepEqual(errors, []);
     console.log('PASS: dashboard filtering, wishes, scoped saves, season isolation, settings, overcapacity, escaping, save errors and responsive layout.');
   } finally { await browser.close(); }

@@ -144,3 +144,14 @@ test('extra holds extend the base hold like summer without rewriting existing as
   assert.equal(grouped.length,1);assert.equal(grouped[0].capacity,8);
   assert.equal(M.groupCount({A:'1',B:'1.1',C:'1,1.1'},'1'),3);
 });
+
+
+test('Danish CSV letters survive UTF-8, Windows-1252 and UTF-16; damaged names cannot create duplicate players', () => {
+  const text = 'Navn;Meddelelse\nÆgir Øster Åse;Ønsker træning på torsdag';
+  assert.equal(M.decodeCsv(Buffer.from(text,'utf8')),text);
+  assert.equal(M.decodeCsv(Buffer.from(text,'latin1')),text);
+  assert.equal(M.decodeCsv(Buffer.concat([Buffer.from([255,254]),Buffer.from(text,'utf16le')])),text);
+  assert.throws(()=>M.decodeCsv(Buffer.from('Navn\nBj�rn','utf8')),/beskadigede/);
+  assert.throws(()=>M.newPlayersCsv('Navn;Timer\nBjørn;1',['Bj�rn']),/dublet/);
+  assert.equal(M.newPlayersCsv('Navn;Timer\nBjørn;1',['Anders']).added,1);
+});
