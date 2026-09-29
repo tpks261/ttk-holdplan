@@ -81,6 +81,15 @@ const root = path.resolve(__dirname, '..');
     await page.getByRole('button', { name: 'Upload CSV', exact: true }).click();
     await page.locator('#csv-file').setInputFiles({name:'dansk.csv',mimeType:'text/csv',buffer:Buffer.from('Navn;Meddelelse\nÆgir Øster;Ønsker træning på torsdag','latin1')});
     await page.locator('#csv-preview').getByText('Ægir Øster', {exact:true}).waitFor();
+    await page.locator('#csv-file').setInputFiles({name:'opdater.csv',mimeType:'text/csv',buffer:Buffer.from('Navn;Meddelelse\nAlma Test;Tirsdag 15-16','utf8')});
+    await page.waitForFunction(() => document.querySelector('#csv-preview').textContent.includes('1 springes over'));
+    await page.locator('#csv-mode').selectOption('update');
+    assert.match(await page.locator('#csv-preview').innerText(), /1 opdateres/);
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#import').click();
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('CSV importeret'));
+    assert.equal(calls.findLast(c => c.type === 'importCSV').updateExisting, true);
+    assert.equal(data.winter.assignments['Alma Test'], '1,4');
     assert.deepEqual(errors, []);
     console.log('PASS: dashboard filtering, wishes, scoped saves, season isolation, settings, overcapacity, escaping, save errors and responsive layout.');
   } finally { await browser.close(); }

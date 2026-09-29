@@ -10,8 +10,10 @@ kolliderende navne på en almindelig Mac-disk; stage aldrig sommerfilen som
 en utilsigtet ændring.
 
 Et Git-push ændrer kun koden. Der køres ingen migration, nulstilling, import,
-prøvedata eller automatisk gemning ved opstart/sæsonskift. Den nye CSV-import
-forhåndsvises og tilføjer kun nye navne; eksisterende spillere springes over.
+prøvedata eller automatisk gemning ved opstart/sæsonskift. CSV-import forhåndsvises og tilføjer som standard kun nye navne. Admin kan
+eksplicit vælge og bekræfte opdatering af eksisterende spillerdata/ønsker som
+i sommeradmin; tildelinger ændres ikke af import. Beskadigede navne blokerer
+mulige dubletter og skal rettes ud fra originalfilen.
 Alle tildelinger, også ukendte holdnumre, bevares indtil en admin aktivt ændrer dem.
 
 ### Aktivering af baner og kapacitet

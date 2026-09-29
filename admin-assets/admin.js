@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const levels = ['', 'Begynder', 'Let øvet', 'Øvet', 'Meget øvet', 'Elite'];
-  const state = { season: 'winter', view: 'dashboard', players: [], schedule: [], assignments: {}, selected: null, filter: 'all', query: '', day: 'Mandag', hold: null, busy: false, loaded: false, defaults: null, raw: {}, csv: null };
+  const state = { season: 'winter', view: 'dashboard', players: [], schedule: [], assignments: {}, selected: null, filter: 'all', query: '', day: 'Mandag', hold: null, busy: false, loaded: false, defaults: null, raw: {}, csv: null, importUpdates: false };
   const seasonLabel = () => state.season === 'winter' ? 'Vinter' : 'Sommer';
   const done = p => p.a.length >= M.hours(p);
   const mismatch = p => M.outsideWishes(p, state.schedule);
@@ -130,7 +130,7 @@
       const enabled = state.raw.capabilities?.adminSettings;
       work.innerHTML = `<section class="pane"><h2>Baner og kapacitet · ${seasonLabel()}</h2><p class="muted">Ændrer kun holdenes indstillinger. Spillere og tildelinger bevares.</p>${enabled ? '' : '<div class="warning">For at gemme baner og kapacitet skal den nye Apps Script-version først aktiveres. Indtil da vises de eksisterende standardindstillinger.</div>'}${state.schedule.map(h => `<form class="setting-row" data-settings="${esc(h.id)}"><div><strong>Hold ${esc(h.id)} · ${h.day} ${h.time}</strong><p class="muted">${count(h.id)} spillere på grundhold ${M.base(h.id)}</p></div><label>Bane / spillested<input name="court" value="${esc(h.court)}" maxlength="100" required ${!enabled ? 'disabled' : ''}></label><label>Maks. spillere<input name="capacity" type="number" min="1" max="100" step="1" value="${h.capacity}" required ${!enabled ? 'disabled' : ''}></label><button class="custom-hold-btn" ${!enabled ? 'disabled' : ''}>Gem</button>${count(h.id) > (displaySchedule().find(x => x.id === M.base(h.id))?.capacity || 0) ? '<div class="warning">⚠ Over kapacitet. Ingen tildelinger er fjernet.</div>' : ''}</form>`).join('')}</section>`;
     } else if (state.view === 'add') work.innerHTML = `<section class="pane"><div class="box"><h2>Tilføj spiller · ${seasonLabel()}</h2><form id="add-player"><div class="fields"><label>Navn<input name="name" required maxlength="150"></label><label>Alder<input name="age" type="number" min="1" max="100"></label><label>Timer/uge<input name="hours" type="number" min="1" max="7" value="1" required></label><label>Niveau<select name="level">${levels.map(l => `<option value="${l}">${l || 'Vælg niveau'}</option>`).join('')}</select></label><label>Besked / ønsker<textarea name="note" maxlength="2000"></textarea></label></div><button class="custom-hold-btn">Tilføj spiller</button></form></div></section>`;
-    else if (state.view === 'csv') work.innerHTML = `<section class="pane"><div class="box"><h2>Upload CSV · ${seasonLabel()}</h2><p class="muted">Kun nye spillere importeres. Spillere, der allerede findes, springes over. Eksisterende ønsker, niveauer og tildelinger overskrives ikke.</p><div class="fields"><label>CSV-fil<input id="csv-file" type="file" accept=".csv,text/csv"></label></div><div class="csv-preview" id="csv-preview"></div></div></section>`;
+    else if (state.view === 'csv') work.innerHTML = `<section class="pane"><div class="box"><h2>Upload CSV · ${seasonLabel()}</h2><p class="muted">Vælg kun nye spillere, eller opdatér spillerdata og ønsker som i sommeradmin. Eksisterende tildelinger ændres aldrig af importen.</p><div class="fields"><label>Importtype<select id="csv-mode"><option value="new">Kun nye spillere · bevar eksisterende data</option><option value="update">Tilføj nye og opdatér eksisterende · som sommer</option></select></label><label>CSV-fil<input id="csv-file" type="file" accept=".csv,text/csv"></label></div><div class="csv-preview" id="csv-preview"></div></div></section>`;
     else if (state.view === 'swaps') work.innerHTML = `<section class="pane"><h2>Holdbytte · ${seasonLabel()}</h2>${(state.raw.swapRequests || []).map((r, i) => `<div class="box"><h3>${esc(r.name)}</h3><p>Hold ${esc(r.fromHold)} → Hold ${esc(r.toHold)}</p>${button('Godkend', `data-review="${i}" data-decision="approved"`)} ${button('Afvis', `data-review="${i}" data-decision="rejected"`)}</div>`).join('') || '<div class="box">Ingen afventende anmodninger.</div>'}</section>`;
     if (state.view === 'settings' && (state.raw.extraHoldOptions || []).length) {
       work.querySelector('.pane').insertAdjacentHTML('beforeend', `<div class="box"><h2>Ekstra hold</h2><div class="plain-list">${state.raw.extraHoldOptions.map(h => button((h.active ? 'Deaktivér' : 'Aktivér') + ' hold ' + esc(h.hold), `data-extra="${esc(h.hold)}" ${h.active && Object.values(state.assignments).some(v => M.holds(v).includes(String(h.hold))) ? 'disabled' : ''}`)).join('')}</div><p class="muted">Et ekstrahold med spillere kan ikke deaktiveres.</p></div>`);
@@ -152,7 +152,7 @@
     const d = b.dataset;
     if (b.id === 'reload') { await load(); return; }
     if (!state.loaded) return;
-    if (d.view) { state.view = d.view; state.csv = null; render(); }
+    if (d.view) { state.view = d.view; state.csv = null; state.importUpdates = false; render(); }
     else if (d.filter) { state.view = 'players'; state.filter = d.filter; state.query = ''; state.selected = visible()[0]?.n || null; render(); }
     else if (d.player) { if (!state.players.some(p => p.n === d.player)) { status('Spilleren findes kun i tildelingsarket. Tildelingen er bevaret.', 'error'); return; } state.selected = d.player; state.view = 'players'; render(); }
     else if (d.day) { state.day = d.day; state.hold = state.schedule.find(h => h.day === d.day)?.id; render(); }
@@ -162,7 +162,7 @@
     else if (d.remove) await assign(d.remove, true);
     else if (d.extra) await mutate({ type: 'toggleExtraHold', hold: d.extra, active: !state.raw.extraHoldOptions.find(h => String(h.hold) === d.extra).active }, 'Ekstrahold opdateret');
     else if (b.id === 'clear' && selected() && confirm('Fjern alle tildelinger for ' + selected().n + '?')) await mutate({ type: 'save', name: selected().assignmentKey, playerName: selected().n, holds: '', expectedHolds: selected().a.join(',') }, 'Tildelinger fjernet');
-    else if (b.id === 'import' && state.csv) { const text = state.csv; state.csv = null; await mutate({ type: 'importCSV', data: text, preserveExisting: true }, 'CSV importeret uden at overskrive eksisterende spillere'); }
+    else if (b.id === 'import' && state.csv) { if (state.importUpdates && !confirm('Opdatér eksisterende spillerdata og ønsker fra CSV i ' + seasonLabel() + '? Tildelinger bevares.')) return; const text = state.csv; state.csv = null; await mutate({ type: 'importCSV', data: text, updateExisting: state.importUpdates }, 'CSV importeret · eksisterende tildelinger bevaret'); }
     else if (d.review !== undefined) {
       const r = state.raw.swapRequests[Number(d.review)];
       if (d.decision === 'approved' && !state.raw.capabilities?.assignmentValidation) { status('Godkendelse af holdbytte kræver den nye Apps Script-version, så sæsonens kapacitet kontrolleres korrekt.', 'error'); return; }
@@ -172,12 +172,19 @@
       const a = document.createElement('a'), url = URL.createObjectURL(new Blob(['\uFEFF', text], { type: 'text/plain;charset=utf-8' })); a.href = url; a.download = 'TTK-' + state.season + '-tildelinger.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
   });
+  function previewCsv(text) {
+    try {
+      const preview = M.newPlayersCsv(text, state.players.map(p => p.n), state.importUpdates);
+      $('csv-preview').innerHTML = `<p>${preview.added} nye · ${preview.updated} opdateres · ${preview.skipped} springes over</p><p class="muted">${preview.names.slice(0, 8).map(esc).join(', ')}${preview.names.length > 8 ? ' …' : ''}</p>${button('Importér i ' + seasonLabel(), `id="import" ${!preview.added && !preview.updated ? 'disabled' : ''}`)}`;
+    } catch (err) { state.csv = null; $('csv-preview').textContent = err.message; }
+  }
   document.addEventListener('input', e => { if (e.target.id === 'search') { state.query = e.target.value; list(); } });
   document.addEventListener('change', async e => {
     if (state.busy) return;
     if (e.target.id === 'season') {
       state.season = e.target.value; state.loaded = false; state.players = []; state.assignments = {}; state.selected = null; state.filter = 'all'; state.query = ''; state.day = 'Mandag'; state.csv = null; render(); await load();
     } else if (e.target.id === 'level') await mutate({ type: 'saveLevel', name: selected().n, level: e.target.value }, 'Niveau gemt');
+    else if (e.target.id === 'csv-mode') { state.importUpdates = e.target.value === 'update'; if (state.csv) previewCsv(state.csv); }
     else if (e.target.id === 'csv-file') {
       const file = e.target.files[0]; state.csv = null; if (!file) return;
       const season = state.season; const input = e.target;
@@ -185,9 +192,8 @@
         if (file.size > 2 * 1024 * 1024) throw new Error('CSV-filen må højst være 2 MB.');
         const text = M.decodeCsv(await file.arrayBuffer());
         if (season !== state.season || !input.isConnected) return;
-        const preview = M.newPlayersCsv(text, state.players.map(p => p.n));
         state.csv = text;
-        $('csv-preview').innerHTML = `<p>${preview.added} nye spillere · ${preview.skipped} eksisterende springes over</p><p class="muted">${preview.names.slice(0, 8).map(esc).join(', ')}${preview.names.length > 8 ? ' …' : ''}</p>${button('Importér ' + preview.added + ' nye spillere i ' + seasonLabel(), `id="import" ${!preview.added ? 'disabled' : ''}`)}`;
+        previewCsv(text);
       } catch (err) { if (season === state.season && input.isConnected) { $('csv-preview').textContent = err.message; status(err.message, 'error'); } }
     }
   });

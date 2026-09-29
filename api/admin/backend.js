@@ -80,14 +80,14 @@ module.exports = async function backend(req, res) {
       }
       if (type === 'importCSV') {
         if (typeof payload.data !== 'string' || Buffer.byteLength(payload.data, 'utf8') > 3 * 1024 * 1024) throw new Error('Ugyldig eller for stor CSV-fil.');
-        const prepared = model.newPlayersCsv(payload.data, current.players.map(p => p.n));
-        if (!prepared.added) {
+        const prepared = model.newPlayersCsv(payload.data, current.players.map(p => p.n), payload.updateExisting === true);
+        if (!prepared.added && !prepared.updated) {
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.end(JSON.stringify({ ok: true, count: 0, skipped: prepared.skipped })); return;
         }
         // Old backends accept semicolon CSV; preserveExisting is also enforced by the new backend.
         proxiedPayload.data = prepared.csv;
-        proxiedPayload.preserveExisting = true;
+        proxiedPayload.preserveExisting = payload.updateExisting !== true;
       }
       if (type === 'addPlayer') {
         const p = payload.player || {};

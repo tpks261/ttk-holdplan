@@ -25,6 +25,7 @@ test('wishes map to season schedules, completion and mismatch remain separate', 
   assert.equal(M.outsideWishes(p, schedules.winter), true);
   assert.equal(M.outsideWishes({ ...p, a: ['13'] }, schedules.winter), false);
   assert.equal(M.outsideWishes({ h: [1], a: ['2'] }, schedules.winter), true);
+  assert.equal(M.outsideWishes({ h: [1], dw: ['tir-15:00–16:00'], a: ['1'] }, schedules.winter), true);
 });
 
 test('assignment key preserves existing name and unknown holds', () => {
@@ -154,4 +155,15 @@ test('Danish CSV letters survive UTF-8, Windows-1252 and UTF-16; damaged names c
   assert.throws(()=>M.decodeCsv(Buffer.from('Navn\nBj�rn','utf8')),/beskadigede/);
   assert.throws(()=>M.newPlayersCsv('Navn;Timer\nBjørn;1',['Bj�rn']),/dublet/);
   assert.equal(M.newPlayersCsv('Navn;Timer\nBjørn;1',['Anders']).added,1);
+});
+
+
+test('explicit summer-style CSV update changes wishes but preserves every assignment', () => {
+  const h = scriptHarness(), assignments=structuredClone(h.sheets.WinterAssignments.rows);
+  const csv='Navn;Timer;Meddelelse\nAlma;2;Tirsdag 15-16';
+  const plan=M.newPlayersCsv(csv,['Alma'],true);
+  assert.equal(plan.updated,1);assert.equal(plan.added,0);
+  assert.equal(h.post({type:'importCSV',data:plan.csv,preserveExisting:false}).ok,true);
+  assert.equal(h.sheets.WinterPlayers.rows[1][6],'Tirsdag 15-16');
+  assert.deepEqual(h.sheets.WinterAssignments.rows,assignments);
 });

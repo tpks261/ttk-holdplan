@@ -23,6 +23,11 @@
   }
   function outsideWishes(p, schedule) {
     if (!holds(p.h).length && !(p.dw || []).length) return false;
+    // Summer checks availability even when a dedicated hold column also exists.
+    if ((p.dw || []).length) return holds(p.a).some(id => {
+      const h = schedule.find(h => base(h.id) === base(id));
+      return h && !p.dw.some(w => timeKey(w) === timeKey(days[h.day] + '-' + h.time));
+    });
     const wished = wishIds(p, schedule).map(base);
     return holds(p.a).some(id => !wished.includes(base(id)));
   }
@@ -87,7 +92,7 @@
     }
     return { ...best, nameIndex, data };
   }
-  function newPlayersCsv(text, existingNames) {
+  function newPlayersCsv(text, existingNames, updateExisting = false) {
     const parsed = parseCsv(text), existing = new Set(existingNames.map(nameKey));
     const added = parsed.data.filter(row => !existing.has(nameKey(row[parsed.nameIndex])));
     for (const row of added) {
@@ -97,9 +102,9 @@
         return old.includes('\uFFFD') && old.length === name.length && [...old].every((c, i) => c === '\uFFFD' || c === name[i]);
       })) throw new Error('Navnet ' + row[parsed.nameIndex] + ' kan allerede findes med beskadigede tegn. Ret den eksisterende post fra originalfilen før import, så der ikke oprettes en dublet.');
     }
-    const rows = [...parsed.rows.slice(0, parsed.index + 1), ...added];
+    const rows = [...parsed.rows.slice(0, parsed.index + 1), ...(updateExisting ? parsed.data : added)];
     const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
-    return { csv, added: added.length, skipped: parsed.data.length - added.length, names: added.map(row => row[parsed.nameIndex]) };
+    return { csv, added: added.length, updated: updateExisting ? parsed.data.length - added.length : 0, skipped: updateExisting ? 0 : parsed.data.length - added.length, names: added.map(row => row[parsed.nameIndex]) };
   }
   function decodeCsv(buffer) {
     const bytes = new Uint8Array(buffer);
