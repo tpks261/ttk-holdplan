@@ -9,6 +9,13 @@
   const base = id => String(Math.floor(Number(id)));
   const hours = p => Math.max(1, Number(p.t) || 1);
   const timeKey = value => String(value).replace(/[–—]/g, '-').replace(/\s/g, '');
+  function groupedSchedule(schedule) {
+    return schedule.filter(h => h.id === base(h.id)).map(h => {
+      const members = schedule.filter(other => base(other.id) === h.id);
+      return { ...h, capacity: members.reduce((sum, other) => sum + other.capacity, 0), court: [...new Set(members.map(other => other.court))].join(' / ') };
+    });
+  }
+  const groupCount = (assignments, id) => Object.values(assignments).filter(value => holds(value).some(h => base(h) === base(id))).length;
   function wishIds(p, schedule) {
     const direct = holds(p.h);
     if (direct.length) return schedule.filter(h => direct.some(id => base(id) === base(h.id))).map(h => h.id);
@@ -86,5 +93,5 @@
     const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
     return { csv, added: added.length, skipped: parsed.data.length - added.length, names: added.map(row => row[parsed.nameIndex]) };
   }
-  return { nameKey, holds, base, hours, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv };
+  return { nameKey, holds, base, hours, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv };
 });

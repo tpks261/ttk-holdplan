@@ -65,11 +65,18 @@ module.exports = async function backend(req, res) {
     if (['save', 'importCSV', 'addPlayer', 'saveAdminSettings', 'toggleExtraHold', 'reviewSwap'].includes(type)) {
       const current = await callBackend({ type: 'load', season: payload.season, token: proxiedPayload.token });
       if (!Array.isArray(current.players) || !current.assignments || (current.season && current.season !== payload.season)) throw new Error('Ugyldige sæsondata. Intet er ændret.');
+      const configuredSchedule = schedules[payload.season].map(h => ({ ...h, ...(current.adminSettings?.holds?.[h.id] || {}) }));
+      (current.extraHolds || []).forEach(value => {
+        const id = String(value), parent = schedules[payload.season].find(h => h.id === model.base(id));
+        if (parent && !configuredSchedule.some(h => h.id === id)) configuredSchedule.push({ ...parent, id, ...(current.adminSettings?.holds?.[id] || {}) });
+      });
+      const groupCapacity = id => model.groupedSchedule(configuredSchedule).find(h => h.id === model.base(id))?.capacity || 0;
       if (type === 'saveAdminSettings' && !current.capabilities?.adminSettings) throw new Error('Opdatér Apps Script før baner og kapacitet kan gemmes.');
       if (type === 'reviewSwap' && payload.decision === 'approved' && !current.capabilities?.assignmentValidation) throw new Error('Opdatér Apps Script før holdbytter kan godkendes med korrekt kapacitet.');
       if (type === 'toggleExtraHold') {
         if (!(current.extraHoldOptions || []).some(h => String(h.hold) === payload.hold)) throw new Error('Ekstraholdet findes ikke.');
         if (!payload.active && Object.values(current.assignments).some(v => model.holds(v).includes(payload.hold))) throw new Error('Flyt spillerne før ekstraholdet deaktiveres.');
+        if (!payload.active && model.groupCount(current.assignments, payload.hold) > groupCapacity(payload.hold) - (configuredSchedule.find(h => h.id === payload.hold)?.capacity || 0)) throw new Error('Ekstraholdet kan ikke lukkes: grundholdet har brug for pladserne.');
       }
       if (type === 'importCSV') {
         if (typeof payload.data !== 'string' || Buffer.byteLength(payload.data, 'utf8') > 3 * 1024 * 1024) throw new Error('Ugyldig eller for stor CSV-fil.');
@@ -100,8 +107,8 @@ module.exports = async function backend(req, res) {
         for (const id of added) {
           const h = schedules[payload.season].find(h => h.id === model.base(id));
           if (!h || (id !== h.id && !(current.extraHolds || []).map(String).includes(id))) throw new Error('Holdet findes ikke i sæsonen.');
-          const capacity = current.adminSettings?.holds?.[id]?.capacity || h.capacity;
-          const occupied = Object.entries(current.assignments).filter(([name, v]) => name !== before.key && model.holds(v).includes(id)).length;
+          const capacity = groupCapacity(id);
+          const occupied = Object.entries(current.assignments).filter(([name, v]) => name !== before.key && model.holds(v).some(other => model.base(other) === model.base(id))).length;
           if (occupied >= capacity) throw new Error('Holdet er fyldt. Genindlæs for ny belægning.');
           if (before.holds.some(x => x !== id && model.base(x) === model.base(id))) throw new Error('Spilleren er allerede tildelt samme grundhold.');
         }

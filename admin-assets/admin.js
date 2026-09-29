@@ -8,7 +8,8 @@
   const seasonLabel = () => state.season === 'winter' ? 'Vinter' : 'Sommer';
   const done = p => p.a.length >= M.hours(p);
   const mismatch = p => M.outsideWishes(p, state.schedule);
-  const count = id => Object.values(state.assignments).filter(v => M.holds(v).includes(id)).length;
+  const count = id => M.groupCount(state.assignments, id);
+  const displaySchedule = () => M.groupedSchedule(state.schedule);
   const holdInfo = id => state.schedule.find(h => h.id === String(id));
   const selected = () => state.players.find(p => p.n === state.selected);
   const visible = () => state.players.filter(p => M.nameKey(p.n).includes(M.nameKey(state.query)) && (state.filter === 'all' || state.filter === 'pending' && !done(p) || state.filter === 'done' && done(p) || state.filter === 'mismatch' && mismatch(p)));
@@ -35,7 +36,7 @@
     state.schedule = state.defaults[state.season].map(h => ({ ...h, ...(settings[h.id] || {}) }));
     (data.extraHolds || []).forEach(id => {
       id = String(id);
-      const original = state.schedule.find(h => h.id === M.base(id));
+      const original = state.defaults[state.season].find(h => h.id === M.base(id));
       if (original && !holdInfo(id)) state.schedule.push({ ...original, id, ...(settings[id] || {}) });
     });
     state.assignments = data.assignments;
@@ -81,31 +82,31 @@
   function dashboardPanels() {
     const mismatches = state.players.filter(mismatch);
     const swaps = (state.raw.swapRequests || []).filter(r => !r.status || r.status === 'pending');
-    const filled = state.schedule.filter(h => count(h.id) >= h.capacity);
+    const filled = displaySchedule().filter(h => count(h.id) >= h.capacity);
     const formatHold = id => { const h = holdInfo(id); return 'Hold ' + esc(id) + (h ? ' · ' + h.day + ' ' + h.time : ''); };
     return `<div class="dashboard-panels"><section class="box"><div class="line"><h2>Matcher ikke ønsker · ${mismatches.length}</h2>${button('Se alle', 'data-filter="mismatch"')}</div><div class="plain-list">${mismatches.slice(0, 8).map(p => `<button data-player="${esc(p.n)}">${esc(p.n)}<small class="muted"> · ${p.a.map(formatHold).join(', ')}</small></button>`).join('') || 'Ingen kendte mismatch'}</div></section><section class="box"><div class="line"><h2>Holdbytteanmodninger · ${swaps.length}</h2>${button('Gennemgå', 'data-view="swaps"')}</div><div class="plain-list">${swaps.slice(0, 6).map(r => `<button data-view="swaps">${esc(r.name)}<br><span class="muted">Fra ${formatHold(r.fromHold)} → ${formatHold(r.toHold)}</span></button>`).join('') || 'Ingen holdbytter afventer'}</div></section><section class="box"><h2>Næste handlinger</h2><div class="plain-list">${button('Åbn skemavisning', 'data-view="schedule"')}${button('Tilføj spiller manuelt', 'data-view="add"')}${button('Tjek holdkapacitet · ' + filled.length + ' fyldte hold', 'data-view="settings"')}</div></section></div>`;
   }
   function dayTabs() { return `<div class="schedule-days">${[...new Set(state.schedule.map(h => h.day))].map(day => `<button data-day="${day}" class="${day === state.day ? 'active' : ''}">${day}</button>`).join('')}</div>`; }
   function schedulePanel(full = false) {
-    const h = holdInfo(state.hold);
-    const roster = h ? Object.entries(state.assignments).filter(([, v]) => M.holds(v).includes(h.id)).map(([n]) => state.players.find(p => p.assignmentKey === n)?.n || n) : [];
-    return `<h2>${seasonLabel()} · Holdoversigt</h2>${dayTabs()}<div class="${full ? 'schedule-grid' : ''}">${state.schedule.filter(h => h.day === state.day).map(h => `<button class="hold-button ${h.id === state.hold ? 'selected' : ''}" data-roster="${esc(h.id)}"><span class="count">${count(h.id)}/${h.capacity}</span><strong>Hold ${esc(h.id)}</strong><small>${h.time} · ${esc(h.court)}</small>${count(h.id) > h.capacity ? '<small>⚠ Over kapacitet</small>' : ''}</button>`).join('')}</div>${h ? `<div class="roster"><h3>Hold ${esc(h.id)} · ${h.day} ${h.time}</h3><div class="plain-list">${roster.map(n => `<button data-player="${esc(n)}">${esc(n)}${(() => { const player = state.players.find(p => p.n === n); return player ? '<br><span class="muted">' + (player.age ? esc(player.age) + ' år · ' : '') + player.a.map(id => 'Hold ' + esc(id)).join(', ') + '</span>' : ''; })()}</button>`).join('') || '<p class="muted">Ingen spillere på holdet endnu.</p>'}</div></div>` : ''}`;
+    const h = displaySchedule().find(h => h.id === M.base(state.hold));
+    const roster = h ? Object.entries(state.assignments).filter(([, v]) => M.holds(v).some(id => M.base(id) === h.id)).map(([n]) => state.players.find(p => p.assignmentKey === n)?.n || n) : [];
+    return `<h2>${seasonLabel()} · Holdoversigt</h2>${dayTabs()}<div class="${full ? 'schedule-grid' : ''}">${displaySchedule().filter(h => h.day === state.day).map(h => `<button class="hold-button ${h.id === state.hold ? 'selected' : ''}" data-roster="${esc(h.id)}"><span class="count">${count(h.id)}/${h.capacity}</span><strong>Hold ${esc(h.id)}</strong><small>${h.time} · ${esc(h.court)}</small>${count(h.id) > h.capacity ? '<small>⚠ Over kapacitet</small>' : ''}</button>`).join('')}</div>${h ? `<div class="roster"><h3>Hold ${esc(h.id)} · ${h.day} ${h.time}</h3><div class="plain-list">${roster.map(n => `<button data-player="${esc(n)}">${esc(n)}${(() => { const player = state.players.find(p => p.n === n); return player ? '<br><span class="muted">' + (player.age ? esc(player.age) + ' år · ' : '') + player.a.map(id => 'Hold ' + esc(id)).join(', ') + '</span>' : ''; })()}</button>`).join('') || '<p class="muted">Ingen spillere på holdet endnu.</p>'}</div></div>` : ''}`;
   }
   function holdChoice(h, p, wishes) {
-    const on = p.a.includes(h.id), full = count(h.id) >= h.capacity;
+    const on = p.a.some(id => M.base(id) === h.id), full = count(h.id) >= h.capacity;
     return `<button class="hold-button ${on ? 'selected' : ''}" data-assign="${esc(h.id)}" aria-pressed="${on}" ${!on && (full || p.a.length >= M.hours(p)) ? 'disabled' : ''}><span class="count">${count(h.id)}/${h.capacity}</span><strong>${on ? '✓ ' : ''}Hold ${esc(h.id)}${h.group ? ' · ' + esc(h.group) : ''}</strong><small>${h.day} ${h.time} · ${esc(h.court)}</small><small>${on ? 'Tildelt · klik for at fjerne' : full ? 'Holdet er fyldt' : wishes.includes(h.id) ? 'Matcher ønske' : 'Manuel tildeling'}</small></button>`;
   }
   function detail() {
     const p = selected(); if (!p) return '<div class="empty">Vælg en spiller fra listen.</div>';
-    const wishes = M.wishIds(p, state.schedule), filtered = visible(), index = filtered.indexOf(p);
+    const wishes = M.wishIds(p, displaySchedule()), filtered = visible(), index = filtered.indexOf(p);
     return `<div class="detail-header"><div><div class="dh-name">${esc(p.n)}</div><div class="dh-meta">${M.hours(p)} timer/uge${p.age ? ' · ' + esc(p.age) + ' år' : ''}${p.p ? ' · ' + esc(p.p) + ' kr./sæson' : ''}</div><div class="dh-meta">Tildelt ${p.a.length}/${M.hours(p)} hold: ${p.a.map(esc).join(', ') || 'Ingen endnu'}</div></div></div>
     <label class="level-field">Niveau<select id="level">${[...new Set([...levels, p.level || ''])].map(l => `<option value="${esc(l)}" ${l === (p.level || '') ? 'selected' : ''}>${esc(l || 'Vælg niveau')}</option>`).join('')}</select></label>
     ${p.note ? `<div class="warning"><strong>Besked fra forældre</strong><div class="note-text">${esc(p.note)}</div></div>` : ''}
     ${mismatch(p) ? '<div class="warning">⚠ Tildelingen matcher ikke spillerens registrerede ønsker.</div>' : ''}
     ${(p.dw || []).length ? `<p class="muted">Dag-/tidsønsker: ${p.dw.map(w => esc(M.formatWish(w))).join(' · ')}</p>` : ''}
-    <div class="wish-title">Spillerens ønskede hold</div>${wishes.length ? state.schedule.filter(h => wishes.includes(h.id)).map(h => holdChoice(h, p, wishes)).join('') : '<p class="muted">Ingen holdforslag ud fra de registrerede ønsker. Se beskeden og vælg manuelt.</p>'}
+    <div class="wish-title">Spillerens ønskede hold</div>${wishes.length ? displaySchedule().filter(h => wishes.includes(h.id)).map(h => holdChoice(h, p, wishes)).join('') : '<p class="muted">Ingen holdforslag ud fra de registrerede ønsker. Se beskeden og vælg manuelt.</p>'}
     ${p.a.filter(id => !holdInfo(id)).map(id => `<div class="warning">Tildelt hold ${esc(id)} findes ikke i denne sæsons skema. Tildelingen er bevaret. ${button('Fjern dette hold', `data-remove="${esc(id)}"`)}</div>`).join('')}
-    <details><summary>Andre hold · manuel tildeling</summary>${state.schedule.filter(h => !wishes.includes(h.id)).map(h => holdChoice(h, p, wishes)).join('')}</details>
+    <details><summary>Andre hold · manuel tildeling</summary>${displaySchedule().filter(h => !wishes.includes(h.id)).map(h => holdChoice(h, p, wishes)).join('')}</details>
     <form id="manual-assignment" class="custom-hold"><label for="manual-hold">Tildel et andet hold manuelt</label><div class="custom-hold-row"><input id="manual-hold" name="hold" inputmode="decimal" placeholder="fx 2" required>${button('Tildel', 'type="submit"')}</div></form>${p.a.length ? button('Fjern alle tildelinger', 'id="clear"') : ''}<div class="nav-row"><button class="nav-btn" data-step="-1" ${index <= 0 ? 'disabled' : ''}>← Forrige</button><button class="nav-btn primary" data-step="1" ${index < 0 || index >= filtered.length - 1 ? 'disabled' : ''}>Næste →</button></div>`;
   }
   function render() {
@@ -122,20 +123,20 @@
     } else if (state.view === 'schedule') work.innerHTML = `<section class="pane"><div class="box">${schedulePanel(true)}</div></section>`;
     else if (state.view === 'settings') {
       const enabled = state.raw.capabilities?.adminSettings;
-      work.innerHTML = `<section class="pane"><h2>Baner og kapacitet · ${seasonLabel()}</h2><p class="muted">Ændrer kun holdenes indstillinger. Spillere og tildelinger bevares.</p>${enabled ? '' : '<div class="warning">For at gemme baner og kapacitet skal den nye Apps Script-version først aktiveres. Indtil da vises de eksisterende standardindstillinger.</div>'}${state.schedule.map(h => `<form class="setting-row" data-settings="${esc(h.id)}"><div><strong>Hold ${esc(h.id)} · ${h.day} ${h.time}</strong><p class="muted">${count(h.id)} spillere tildelt</p></div><label>Bane / spillested<input name="court" value="${esc(h.court)}" maxlength="100" required ${!enabled ? 'disabled' : ''}></label><label>Maks. spillere<input name="capacity" type="number" min="1" max="100" step="1" value="${h.capacity}" required ${!enabled ? 'disabled' : ''}></label><button class="custom-hold-btn" ${!enabled ? 'disabled' : ''}>Gem</button>${count(h.id) > h.capacity ? '<div class="warning">⚠ Over kapacitet. Ingen tildelinger er fjernet.</div>' : ''}</form>`).join('')}</section>`;
+      work.innerHTML = `<section class="pane"><h2>Baner og kapacitet · ${seasonLabel()}</h2><p class="muted">Ændrer kun holdenes indstillinger. Spillere og tildelinger bevares.</p>${enabled ? '' : '<div class="warning">For at gemme baner og kapacitet skal den nye Apps Script-version først aktiveres. Indtil da vises de eksisterende standardindstillinger.</div>'}${state.schedule.map(h => `<form class="setting-row" data-settings="${esc(h.id)}"><div><strong>Hold ${esc(h.id)} · ${h.day} ${h.time}</strong><p class="muted">${count(h.id)} spillere på grundhold ${M.base(h.id)}</p></div><label>Bane / spillested<input name="court" value="${esc(h.court)}" maxlength="100" required ${!enabled ? 'disabled' : ''}></label><label>Maks. spillere<input name="capacity" type="number" min="1" max="100" step="1" value="${h.capacity}" required ${!enabled ? 'disabled' : ''}></label><button class="custom-hold-btn" ${!enabled ? 'disabled' : ''}>Gem</button>${count(h.id) > (displaySchedule().find(x => x.id === M.base(h.id))?.capacity || 0) ? '<div class="warning">⚠ Over kapacitet. Ingen tildelinger er fjernet.</div>' : ''}</form>`).join('')}</section>`;
     } else if (state.view === 'add') work.innerHTML = `<section class="pane"><div class="box"><h2>Tilføj spiller · ${seasonLabel()}</h2><form id="add-player"><div class="fields"><label>Navn<input name="name" required maxlength="150"></label><label>Alder<input name="age" type="number" min="1" max="100"></label><label>Timer/uge<input name="hours" type="number" min="1" max="7" value="1" required></label><label>Niveau<select name="level">${levels.map(l => `<option value="${l}">${l || 'Vælg niveau'}</option>`).join('')}</select></label><label>Besked / ønsker<textarea name="note" maxlength="2000"></textarea></label></div><button class="custom-hold-btn">Tilføj spiller</button></form></div></section>`;
     else if (state.view === 'csv') work.innerHTML = `<section class="pane"><div class="box"><h2>Upload CSV · ${seasonLabel()}</h2><p class="muted">Kun nye spillere importeres. Spillere, der allerede findes, springes over. Eksisterende ønsker, niveauer og tildelinger overskrives ikke.</p><div class="fields"><label>CSV-fil<input id="csv-file" type="file" accept=".csv,text/csv"></label></div><div class="csv-preview" id="csv-preview"></div></div></section>`;
     else if (state.view === 'swaps') work.innerHTML = `<section class="pane"><h2>Holdbytte · ${seasonLabel()}</h2>${(state.raw.swapRequests || []).map((r, i) => `<div class="box"><h3>${esc(r.name)}</h3><p>Hold ${esc(r.fromHold)} → Hold ${esc(r.toHold)}</p>${button('Godkend', `data-review="${i}" data-decision="approved"`)} ${button('Afvis', `data-review="${i}" data-decision="rejected"`)}</div>`).join('') || '<div class="box">Ingen afventende anmodninger.</div>'}</section>`;
     if (state.view === 'settings' && (state.raw.extraHoldOptions || []).length) {
-      work.querySelector('.pane').insertAdjacentHTML('beforeend', `<div class="box"><h2>Ekstra hold</h2><div class="plain-list">${state.raw.extraHoldOptions.map(h => button((h.active ? 'Deaktivér' : 'Aktivér') + ' hold ' + esc(h.hold), `data-extra="${esc(h.hold)}" ${h.active && count(String(h.hold)) ? 'disabled' : ''}`)).join('')}</div><p class="muted">Et ekstrahold med spillere kan ikke deaktiveres.</p></div>`);
+      work.querySelector('.pane').insertAdjacentHTML('beforeend', `<div class="box"><h2>Ekstra hold</h2><div class="plain-list">${state.raw.extraHoldOptions.map(h => button((h.active ? 'Deaktivér' : 'Aktivér') + ' hold ' + esc(h.hold), `data-extra="${esc(h.hold)}" ${h.active && Object.values(state.assignments).some(v => M.holds(v).includes(String(h.hold))) ? 'disabled' : ''}`)).join('')}</div><p class="muted">Et ekstrahold med spillere kan ikke deaktiveres.</p></div>`);
     }
   }
   async function assign(id, removeOnly = false) {
     const p = selected(); if (!p) return;
-    let next = p.a.filter(h => h !== id);
-    if (!p.a.includes(id) && !removeOnly) {
+    let next = p.a.filter(h => removeOnly ? h !== id : M.base(h) !== M.base(id));
+    if (!p.a.some(h => M.base(h) === M.base(id)) && !removeOnly) {
       if (p.a.length >= M.hours(p)) { status('Fjern et hold først. Spilleren har allerede det ønskede antal.', 'error'); return; }
-      const h = holdInfo(id);
+      const h = displaySchedule().find(h => h.id === id);
       if (!h || count(id) >= h.capacity) { status('Holdet er fyldt eller findes ikke.', 'error'); return; }
       next = [...p.a, id];
     }
@@ -191,9 +192,9 @@
     e.preventDefault(); if (state.busy) return;
     const values = new FormData(e.target);
     if (e.target.id === 'manual-assignment') {
-      const id = String(values.get('hold')).trim().replace(',', '.');
+      const id = M.base(String(values.get('hold')).trim().replace(',', '.'));
       if (!holdInfo(id)) { status('Angiv et holdnummer, der findes i den valgte sæson.', 'error'); return; }
-      if (selected()?.a.includes(id)) { status('Holdet er allerede valgt.', 'error'); return; }
+      if (selected()?.a.some(h => M.base(h) === id)) { status('Holdet er allerede valgt.', 'error'); return; }
       await assign(id);
     } else if (e.target.id === 'add-player') {
       const name = String(values.get('name')).trim();

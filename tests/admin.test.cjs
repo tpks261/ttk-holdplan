@@ -56,7 +56,7 @@ function scriptHarness() {
     sheet(prefix + 'SwapRequests', [['Id','Timestamp','Name','FromHold','ToHold','Status','DecidedAt']]);
   }
   let locked = false;
-  const context = vm.createContext({ console, SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: name => sheets[name], insertSheet: name => sheet(name, []) }) }, PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || null, setProperty: (key, value) => { properties[key] = value; } }) }, LockService: { getScriptLock: () => ({ waitLock: () => { assert.equal(locked, false); locked = true; }, releaseLock: () => { locked = false; } }) }, Utilities: { parseCsv: M.parseRows }, ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ setMimeType: () => JSON.parse(text) }) } });
+  const context = vm.createContext({ console, SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: name => sheets[name], insertSheet: name => sheet(name, []), getName: () => 'Test', getUrl: () => 'test://sheet' }) }, PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || null, setProperty: (key, value) => { properties[key] = value; } }) }, LockService: { getScriptLock: () => ({ waitLock: () => { assert.equal(locked, false); locked = true; }, releaseLock: () => { locked = false; } }) }, Utilities: { parseCsv: M.parseRows }, ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ setMimeType: () => JSON.parse(text) }) } });
   vm.runInContext(fs.readFileSync(require.resolve('../apps-script'), 'utf8'), context);
   return { context, sheets, properties, snapshot: () => JSON.stringify(Object.fromEntries(Object.entries(sheets).map(([k, s]) => [k, s.rows]))), post: payload => context.doPost({ postData: { contents: JSON.stringify({ season: 'winter', token: 'test-token', ...payload }) } }) };
 }
@@ -127,4 +127,20 @@ test('summer-style export groups assigned players by hold and lists missing play
   assert.ok(text.indexOf('Ægir') < text.indexOf('Åse'));
   assert.match(text, /IKKE TILDELT ENDNU \(1 stk\)/);
   assert.equal(M.formatWish('tir-15:00–16:00'), 'Tirsdag · 15:00–16:00');
+});
+
+
+test('extra holds extend the base hold like summer without rewriting existing assignments', () => {
+  const h = scriptHarness();
+  h.sheets.WinterExtraHolds.appendRow(['1.1', 'TRUE']);
+  for (let i=0;i<3;i++) h.sheets.WinterAssignments.appendRow(['Other'+i, '1']);
+  h.sheets.WinterPlayers.appendRow(['New',1]);
+  const before = structuredClone(h.sheets.WinterAssignments.rows);
+  assert.equal(h.post({type:'save',name:'New',holds:'1',expectedHolds:''}).ok,true);
+  assert.deepEqual(h.sheets.WinterAssignments.rows.slice(0,before.length),before);
+  assert.equal(h.post({type:'toggleExtraHold',hold:'1.1',active:false}).ok,false);
+  assert.equal(h.sheets.WinterExtraHolds.rows[1][1],'TRUE');
+  const grouped=M.groupedSchedule([{id:'1',capacity:4,court:'A'},{id:'1.1',capacity:4,court:'B'}]);
+  assert.equal(grouped.length,1);assert.equal(grouped[0].capacity,8);
+  assert.equal(M.groupCount({A:'1',B:'1.1',C:'1,1.1'},'1'),3);
 });

@@ -364,7 +364,7 @@ function handleLevelSave_(payload) {
   return jsonOut_({ ok: false, error: 'Player not found: ' + name });
 }
 
-function handleExtraHoldToggle_(payload) {
+function writeExtraHoldToggle_(payload) {
   const authError = writeAuthError_(payload);
   if (authError) return jsonOut_({ ok: false, error: authError });
 
@@ -683,26 +683,11 @@ function chooseAvailableHoldForBase_(ss, targetBase, playerName, names) {
   const sheet = ss.getSheetByName((names && names.assignments) || 'Assignments');
   if (!sheet) throw new Error('Assignments sheet not found');
 
-  const candidates = getCandidateHoldsForBase_(ss, targetBase, names && names.extraHolds);
-  const counts = {};
-  candidates.forEach(h => counts[h] = 0);
-
-  const values = sheet.getDataRange().getValues();
-  for (let i = 1; i < values.length; i++) {
-    const name = String(values[i][0] || '').trim();
-    if (!name || name === playerName) continue;
-
-    parseHoldsList_(values[i][1]).forEach(hold => {
-      const key = String(hold);
-      if (counts[key] !== undefined) counts[key]++;
-    });
-  }
-
-  for (let i = 0; i < candidates.length; i++) {
-    const hold = candidates[i];
-    if ((counts[hold] || 0) < adminCapacity_(names && names.season || 'summer', hold)) return hold;
-  }
-
+  const base = String(baseHold_(targetBase));
+  const occupied = sheet.getDataRange().getValues().slice(1).filter(row =>
+    String(row[0] || '').trim() !== playerName && parseHoldsList_(row[1]).some(h => baseHold_(h) === Number(base))
+  ).length;
+  if (occupied < adminGroupCapacity_(ss, names, base)) return base;
   throw new Error('Target hold is full');
 }
 
@@ -1023,6 +1008,27 @@ function adminCapacity_(season, hold) {
   return normalizeSeason_(season) === 'winter' ? 4 : 6;
 }
 
+function adminGroupCapacity_(ss, names, hold) {
+  return getCandidateHoldsForBase_(ss, hold, names.extraHolds)
+    .reduce((total, id) => total + adminCapacity_(names.season, id), 0);
+}
+
+function handleExtraHoldToggle_(payload) {
+  return withAdminLock_(function () {
+    const ss = SpreadsheetApp.getActiveSpreadsheet(), names = sheetNamesFor_(payload.season);
+    if (!payload.active) {
+      const sheet = ss.getSheetByName(names.assignments);
+      const rows = sheet ? sheet.getDataRange().getValues().slice(1) : [];
+      if (rows.some(row => parseHoldsList_(row[1]).includes(String(payload.hold)))) throw new Error('Flyt spillerne før ekstraholdet deaktiveres');
+      const count = rows.filter(row => parseHoldsList_(row[1]).some(h => baseHold_(h) === baseHold_(payload.hold))).length;
+      const active = getActiveExtraHolds_(ss, names.extraHolds).includes(String(payload.hold));
+      const remaining = adminGroupCapacity_(ss, names, payload.hold) - (active ? adminCapacity_(names.season, payload.hold) : 0);
+      if (count > remaining) throw new Error('Grundholdet har brug for ekstraholdets pladser');
+    }
+    return writeExtraHoldToggle_(payload);
+  });
+}
+
 function handleAdminSettingsSave_(payload) {
   const expected = PropertiesService.getScriptProperties().getProperty('TTK_BACKEND_TOKEN');
   if (!expected || payload.token !== expected) throw new Error('Unauthorized settings write');
@@ -1068,8 +1074,8 @@ function handleAssignmentSave_(payload) {
         const base = ADMIN_DEFAULT_SCHEDULES_[names.season].find(h => h.id === String(Math.floor(Number(id))));
         if (!base || (id !== base.id && !extras.includes(id))) throw new Error('Ukendt hold');
         if (next.some(other => other !== id && Math.floor(Number(other)) === Number(base.id))) throw new Error('Grundholdet er allerede valgt');
-        const occupied = rows.filter(r => String(r[0]).trim() !== payload.name && parse(r[1]).includes(id)).length;
-        if (occupied >= adminCapacity_(names.season, id)) throw new Error('Holdet er fyldt');
+        const occupied = rows.filter(r => String(r[0]).trim() !== payload.name && parse(r[1]).some(h => baseHold_(h) === baseHold_(id))).length;
+        if (occupied >= adminGroupCapacity_(ss, names, id)) throw new Error('Holdet er fyldt');
       });
     }
     return writeAssignmentRow_(payload);
