@@ -32,7 +32,7 @@ const root = path.resolve(__dirname, '..');
     await page.getByRole('heading', { name: 'Holdbytteanmodninger · 0', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Mangler tildeling: 2', exact: true }).click();
     assert.equal(await page.locator('#player-list .player-item').count(), 2);
-    assert.match(await page.locator('.work-main').innerText(), /Hold 4/); // Tuesday wish maps to winter, not summer.
+    assert.equal(await page.locator('[data-assign="4"]').isVisible(), true); // Tuesday wish maps to winter, not summer.
     await page.locator('#manual-hold').fill('4');
     await page.locator('#manual-assignment').getByRole('button', { name: 'Tildel', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Tildeling gemt'));
