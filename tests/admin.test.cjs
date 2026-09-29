@@ -120,3 +120,11 @@ test('swap approval respects winter capacity and rejects stale requests without 
   assert.equal(h.post({ type: 'reviewSwap', id: 'swap2', decision: 'approved' }).ok, false);
   assert.deepEqual(h.sheets.WinterAssignments.rows, before);
 });
+
+
+test('summer-style export groups assigned players by hold and lists missing players separately', () => {
+  const text = M.exportList([{n:'Ørn',a:[]},{n:'Åse',a:['4']},{n:'Ægir',a:['1']}], 'Vinter', '29.9.2026');
+  assert.ok(text.indexOf('Ægir') < text.indexOf('Åse'));
+  assert.match(text, /IKKE TILDELT ENDNU \(1 stk\)/);
+  assert.equal(M.formatWish('tir-15:00–16:00'), 'Tirsdag · 15:00–16:00');
+});

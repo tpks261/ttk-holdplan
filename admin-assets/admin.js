@@ -78,11 +78,18 @@
   function metrics() {
     return `<div class="metrics">${[['all', state.players.length, 'Spillere'], ['done', state.players.filter(done).length, 'Færdige'], ['pending', state.players.filter(p => !done(p)).length, 'Mangler tildeling'], ['mismatch', state.players.filter(mismatch).length, 'Matcher ikke ønsker']].map(([f, n, text]) => `<button class="metric" data-filter="${f}" aria-label="${text}: ${n}"><span>${text}</span><strong>${n}</strong></button>`).join('')}</div>`;
   }
+  function dashboardPanels() {
+    const mismatches = state.players.filter(mismatch);
+    const swaps = (state.raw.swapRequests || []).filter(r => !r.status || r.status === 'pending');
+    const filled = state.schedule.filter(h => count(h.id) >= h.capacity);
+    const formatHold = id => { const h = holdInfo(id); return 'Hold ' + esc(id) + (h ? ' · ' + h.day + ' ' + h.time : ''); };
+    return `<div class="dashboard-panels"><section class="box"><div class="line"><h2>Matcher ikke ønsker · ${mismatches.length}</h2>${button('Se alle', 'data-filter="mismatch"')}</div><div class="plain-list">${mismatches.slice(0, 8).map(p => `<button data-player="${esc(p.n)}">${esc(p.n)}<small class="muted"> · ${p.a.map(formatHold).join(', ')}</small></button>`).join('') || 'Ingen kendte mismatch'}</div></section><section class="box"><div class="line"><h2>Holdbytteanmodninger · ${swaps.length}</h2>${button('Gennemgå', 'data-view="swaps"')}</div><div class="plain-list">${swaps.slice(0, 6).map(r => `<button data-view="swaps">${esc(r.name)}<br><span class="muted">Fra ${formatHold(r.fromHold)} → ${formatHold(r.toHold)}</span></button>`).join('') || 'Ingen holdbytter afventer'}</div></section><section class="box"><h2>Næste handlinger</h2><div class="plain-list">${button('Åbn skemavisning', 'data-view="schedule"')}${button('Tilføj spiller manuelt', 'data-view="add"')}${button('Tjek holdkapacitet · ' + filled.length + ' fyldte hold', 'data-view="settings"')}</div></section></div>`;
+  }
   function dayTabs() { return `<div class="schedule-days">${[...new Set(state.schedule.map(h => h.day))].map(day => `<button data-day="${day}" class="${day === state.day ? 'active' : ''}">${day}</button>`).join('')}</div>`; }
   function schedulePanel(full = false) {
     const h = holdInfo(state.hold);
     const roster = h ? Object.entries(state.assignments).filter(([, v]) => M.holds(v).includes(h.id)).map(([n]) => state.players.find(p => p.assignmentKey === n)?.n || n) : [];
-    return `<h2>${seasonLabel()} · Holdoversigt</h2>${dayTabs()}<div class="${full ? 'schedule-grid' : ''}">${state.schedule.filter(h => h.day === state.day).map(h => `<button class="hold-button ${h.id === state.hold ? 'selected' : ''}" data-roster="${esc(h.id)}"><span class="count">${count(h.id)}/${h.capacity}</span><strong>Hold ${esc(h.id)}</strong><small>${h.time} · ${esc(h.court)}</small>${count(h.id) > h.capacity ? '<small>⚠ Over kapacitet</small>' : ''}</button>`).join('')}</div>${h ? `<div class="roster"><h3>Hold ${esc(h.id)} · ${h.day} ${h.time}</h3><div class="plain-list">${roster.map(n => `<button data-player="${esc(n)}">${esc(n)}</button>`).join('') || '<p class="muted">Ingen spillere på holdet endnu.</p>'}</div></div>` : ''}`;
+    return `<h2>${seasonLabel()} · Holdoversigt</h2>${dayTabs()}<div class="${full ? 'schedule-grid' : ''}">${state.schedule.filter(h => h.day === state.day).map(h => `<button class="hold-button ${h.id === state.hold ? 'selected' : ''}" data-roster="${esc(h.id)}"><span class="count">${count(h.id)}/${h.capacity}</span><strong>Hold ${esc(h.id)}</strong><small>${h.time} · ${esc(h.court)}</small>${count(h.id) > h.capacity ? '<small>⚠ Over kapacitet</small>' : ''}</button>`).join('')}</div>${h ? `<div class="roster"><h3>Hold ${esc(h.id)} · ${h.day} ${h.time}</h3><div class="plain-list">${roster.map(n => `<button data-player="${esc(n)}">${esc(n)}${(() => { const player = state.players.find(p => p.n === n); return player ? '<br><span class="muted">' + (player.age ? esc(player.age) + ' år · ' : '') + player.a.map(id => 'Hold ' + esc(id)).join(', ') + '</span>' : ''; })()}</button>`).join('') || '<p class="muted">Ingen spillere på holdet endnu.</p>'}</div></div>` : ''}`;
   }
   function holdChoice(h, p, wishes) {
     const on = p.a.includes(h.id), full = count(h.id) >= h.capacity;
@@ -95,11 +102,11 @@
     <label class="level-field">Niveau<select id="level">${[...new Set([...levels, p.level || ''])].map(l => `<option value="${esc(l)}" ${l === (p.level || '') ? 'selected' : ''}>${esc(l || 'Vælg niveau')}</option>`).join('')}</select></label>
     ${p.note ? `<div class="warning"><strong>Besked fra forældre</strong><div class="note-text">${esc(p.note)}</div></div>` : ''}
     ${mismatch(p) ? '<div class="warning">⚠ Tildelingen matcher ikke spillerens registrerede ønsker.</div>' : ''}
-    ${(p.dw || []).length ? `<p class="muted">Dag-/tidsønsker: ${p.dw.map(esc).join(' · ')}</p>` : ''}
+    ${(p.dw || []).length ? `<p class="muted">Dag-/tidsønsker: ${p.dw.map(w => esc(M.formatWish(w))).join(' · ')}</p>` : ''}
     <div class="wish-title">Spillerens ønskede hold</div>${wishes.length ? state.schedule.filter(h => wishes.includes(h.id)).map(h => holdChoice(h, p, wishes)).join('') : '<p class="muted">Ingen holdforslag ud fra de registrerede ønsker. Se beskeden og vælg manuelt.</p>'}
     ${p.a.filter(id => !holdInfo(id)).map(id => `<div class="warning">Tildelt hold ${esc(id)} findes ikke i denne sæsons skema. Tildelingen er bevaret. ${button('Fjern dette hold', `data-remove="${esc(id)}"`)}</div>`).join('')}
     <details><summary>Andre hold · manuel tildeling</summary>${state.schedule.filter(h => !wishes.includes(h.id)).map(h => holdChoice(h, p, wishes)).join('')}</details>
-    ${p.a.length ? button('Fjern alle tildelinger', 'id="clear"') : ''}<div class="nav-row"><button class="nav-btn" data-step="-1" ${index <= 0 ? 'disabled' : ''}>← Forrige</button><button class="nav-btn primary" data-step="1" ${index < 0 || index >= filtered.length - 1 ? 'disabled' : ''}>Næste →</button></div>`;
+    <form id="manual-assignment" class="custom-hold"><label for="manual-hold">Tildel et andet hold manuelt</label><div class="custom-hold-row"><input id="manual-hold" name="hold" inputmode="decimal" placeholder="fx 2" required>${button('Tildel', 'type="submit"')}</div></form>${p.a.length ? button('Fjern alle tildelinger', 'id="clear"') : ''}<div class="nav-row"><button class="nav-btn" data-step="-1" ${index <= 0 ? 'disabled' : ''}>← Forrige</button><button class="nav-btn primary" data-step="1" ${index < 0 || index >= filtered.length - 1 ? 'disabled' : ''}>Næste →</button></div>`;
   }
   function render() {
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
@@ -109,7 +116,7 @@
     if (!state.loaded) { work.innerHTML = '<div class="empty">Data er ikke indlæst. Brug Genindlæs for at prøve igen.</div>'; return; }
     if (state.view === 'dashboard') {
       const missing = state.players.filter(p => !done(p));
-      work.innerHTML = `<section class="pane"><h2>${seasonLabel()} · Dashboard</h2>${metrics()}<div class="box"><div class="line"><h2>Mangler tildeling</h2>${button('Se alle', 'data-filter="pending"')}</div><div class="plain-list">${missing.slice(0, 8).map(p => `<button data-player="${esc(p.n)}">${esc(p.n)} · ${p.a.length}/${M.hours(p)} hold</button>`).join('') || 'Alle spillere har fået deres hold.'}</div></div><div class="box">${schedulePanel(true)}</div></section>`;
+      work.innerHTML = `<section class="pane"><h2>${seasonLabel()} · Dashboard</h2>${metrics()}<div class="box"><div class="line"><h2>Mangler tildeling</h2>${button('Se alle', 'data-filter="pending"')}</div><div class="plain-list">${missing.slice(0, 8).map(p => `<button data-player="${esc(p.n)}">${esc(p.n)} · ${p.a.length}/${M.hours(p)} hold</button>`).join('') || 'Alle spillere har fået deres hold.'}</div></div>${dashboardPanels()}<div class="box">${schedulePanel(true)}</div></section>`;
     } else if (state.view === 'players') {
       work.innerHTML = `<div class="work-layout"><aside class="work-sidebar"><div class="sidebar-search"><input id="search" type="search" aria-label="Søg spiller" placeholder="Søg spiller…" value="${esc(state.query)}">${filters()}</div><div id="player-list"></div></aside><section class="work-main">${detail()}</section><aside class="work-schedule">${schedulePanel()}</aside></div>`; list();
     } else if (state.view === 'schedule') work.innerHTML = `<section class="pane"><div class="box">${schedulePanel(true)}</div></section>`;
@@ -155,8 +162,8 @@
       if (d.decision === 'approved' && !state.raw.capabilities?.assignmentValidation) { status('Godkendelse af holdbytte kræver den nye Apps Script-version, så sæsonens kapacitet kontrolleres korrekt.', 'error'); return; }
       await mutate({ type: 'reviewSwap', id: r.id, decision: d.decision }, 'Holdbytte behandlet');
     } else if (b.id === 'export') {
-      const lines = [`TTK Holdtildeling – ${seasonLabel()}`, ...state.players.map(p => `${p.n} → ${p.a.map(id => 'Hold ' + id).join(', ') || 'Ikke tildelt'} (${p.a.length}/${M.hours(p)})`)];
-      const a = document.createElement('a'), url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })); a.href = url; a.download = 'TTK-' + state.season + '-tildelinger.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const text = M.exportList(state.players, seasonLabel(), new Date().toLocaleDateString('da-DK'));
+      const a = document.createElement('a'), url = URL.createObjectURL(new Blob(['\uFEFF', text], { type: 'text/plain;charset=utf-8' })); a.href = url; a.download = 'TTK-' + state.season + '-tildelinger.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
   });
   document.addEventListener('input', e => { if (e.target.id === 'search') { state.query = e.target.value; list(); } });
@@ -180,10 +187,15 @@
     }
   });
   document.addEventListener('submit', async e => {
-    if (!e.target.matches('#add-player,[data-settings]')) return;
+    if (!e.target.matches('#add-player,#manual-assignment,[data-settings]')) return;
     e.preventDefault(); if (state.busy) return;
     const values = new FormData(e.target);
-    if (e.target.id === 'add-player') {
+    if (e.target.id === 'manual-assignment') {
+      const id = String(values.get('hold')).trim().replace(',', '.');
+      if (!holdInfo(id)) { status('Angiv et holdnummer, der findes i den valgte sæson.', 'error'); return; }
+      if (selected()?.a.includes(id)) { status('Holdet er allerede valgt.', 'error'); return; }
+      await assign(id);
+    } else if (e.target.id === 'add-player') {
       const name = String(values.get('name')).trim();
       if (state.players.some(p => M.nameKey(p.n) === M.nameKey(name))) { status('Spilleren findes allerede.', 'error'); return; }
       await mutate({ type: 'addPlayer', player: { n: name, t: Number(values.get('hours')), age: values.get('age'), level: values.get('level'), note: values.get('note'), h: [], dw: [], u: true } }, 'Spiller tilføjet');

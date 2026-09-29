@@ -19,6 +19,18 @@
     const wished = wishIds(p, schedule).map(base);
     return holds(p.a).some(id => !wished.includes(base(id)));
   }
+  function formatWish(value) {
+    const [day, slot] = String(value).split(/-(?=\d)/);
+    return (Object.keys(days).find(name => days[name] === day) || day) + (slot ? ' · ' + slot : '');
+  }
+  function exportList(players, season, date) {
+    const assigned = players.filter(p => holds(p.a).length).slice().sort((a, b) => Number(holds(a.a)[0]) - Number(holds(b.a)[0]));
+    const unassigned = players.filter(p => !holds(p.a).length);
+    const lines = ['TTK Holdtildeling – ' + season, 'Eksporteret: ' + date, '', `=== TILDELTE SPILLERE (${assigned.length} stk) ===`, ''];
+    assigned.forEach(p => lines.push(p.n + ' → ' + holds(p.a).map(id => 'Hold ' + id).join(', ')));
+    if (unassigned.length) lines.push('', `=== IKKE TILDELT ENDNU (${unassigned.length} stk) ===`, ...unassigned.map(p => '  - ' + p.n));
+    return lines.join('\n');
+  }
   function assignmentFor(name, assignments) {
     // Prefer exact keys. Preserve the original backend key when names differ only in whitespace/case.
     if (Object.prototype.hasOwnProperty.call(assignments, name)) return { key: name, holds: holds(assignments[name]) };
@@ -74,5 +86,5 @@
     const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
     return { csv, added: added.length, skipped: parsed.data.length - added.length, names: added.map(row => row[parsed.nameIndex]) };
   }
-  return { nameKey, holds, base, hours, wishIds, outsideWishes, assignmentFor, parseRows, parseCsv, newPlayersCsv };
+  return { nameKey, holds, base, hours, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv };
 });

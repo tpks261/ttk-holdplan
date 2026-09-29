@@ -29,10 +29,12 @@ const root = path.resolve(__dirname, '..');
       await route.fulfill({ path: file, contentType: file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.json') ? 'application/json' : 'text/html' });
     });
     await page.goto('http://ttk.test/admin');
+    await page.getByRole('heading', { name: 'Holdbytteanmodninger · 0', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Mangler tildeling: 2', exact: true }).click();
     assert.equal(await page.locator('#player-list .player-item').count(), 2);
     assert.match(await page.locator('.work-main').innerText(), /Hold 4/); // Tuesday wish maps to winter, not summer.
-    await page.locator('[data-assign="4"]').click();
+    await page.locator('#manual-hold').fill('4');
+    await page.locator('#manual-assignment').getByRole('button', { name: 'Tildel', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Tildeling gemt'));
     assert.equal(data.winter.assignments['Alma Test'], '1,4');
     assert.equal(data.summer.assignments['Sommer Test'], '1');
