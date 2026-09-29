@@ -3,9 +3,11 @@
 ## Fælles sæsonadmin (september 2026)
 
 `/admin` åbner nu `admin-app.html`, med sommeradminens farver og arbejdsgang,
-eksplicit sæsonvalg og de eksisterende dataark. De to tidligere filer
-`Admin.html` og `admin.html` bevares uændret i Git. De har kolliderende navne
-på en almindelig Mac-disk; stage derfor aldrig dem som en utilsigtet ændring.
+eksplicit sæsonvalg og de eksisterende dataark. Sommerfilen `Admin.html` bevares uændret i Git. Vinterens `admin.html` bruger
+nu samme indgang som `admin-app.html`, fordi Vercels eksisterende statiske fil
+har forrang over en rewrite. De to filer `Admin.html` og `admin.html` har
+kolliderende navne på en almindelig Mac-disk; stage aldrig sommerfilen som
+en utilsigtet ændring.
 
 Et Git-push ændrer kun koden. Der køres ingen migration, nulstilling, import,
 prøvedata eller automatisk gemning ved opstart/sæsonskift. Den nye CSV-import
