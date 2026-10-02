@@ -123,7 +123,7 @@ test('Vercel proxy scopes reads and only forwards new CSV rows to legacy backend
 test('swap approval respects winter capacity and rejects stale requests without touching assignments', () => {
   const h = scriptHarness();
   h.sheets.WinterSwapRequests.appendRow(['swap1', '', 'Alma', '1', '2', 'pending', '']);
-  for (let i = 0; i < 4; i++) h.sheets.WinterAssignments.appendRow(['Other' + i, '2']);
+  for (let i = 0; i < 6; i++) h.sheets.WinterAssignments.appendRow(['Other' + i, '2']);
   const before = structuredClone(h.sheets.WinterAssignments.rows);
   assert.equal(h.post({ type: 'reviewSwap', id: 'swap1', decision: 'approved' }).ok, false);
   assert.deepEqual(h.sheets.WinterAssignments.rows, before);
@@ -144,7 +144,7 @@ test('summer-style export groups assigned players by hold and lists missing play
 test('extra holds extend the base hold like summer without rewriting existing assignments', () => {
   const h = scriptHarness();
   h.sheets.WinterExtraHolds.appendRow(['1.1', 'TRUE']);
-  for (let i=0;i<3;i++) h.sheets.WinterAssignments.appendRow(['Other'+i, '1']);
+  for (let i=0;i<6;i++) h.sheets.WinterAssignments.appendRow(['Other'+i, '1']);
   h.sheets.WinterPlayers.appendRow(['New',1]);
   const before = structuredClone(h.sheets.WinterAssignments.rows);
   assert.equal(h.post({type:'save',name:'New',holds:'1',expectedHolds:''}).ok,true);
