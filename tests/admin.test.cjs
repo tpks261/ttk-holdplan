@@ -14,6 +14,9 @@ test('CSV handles comma, semicolon, BOM, quoted multiline fields and existing na
     const rows = M.parseCsv(prepared.csv);
     assert.equal(rows.data[0][1], 'Tirsdag, tak\n15-16');
   }
+  const exported = M.parseCsv('Nr;Navn;Meddelelse;Betalt;\r\n1;Spiller;Mandag 16-18;');
+  assert.equal(exported.header.length, 4);
+  assert.equal(exported.data[0].length, 4);
   assert.throws(() => M.parseCsv('Navn;Timer\nA;1\nA;2'), /flere gange/);
   assert.throws(() => M.parseCsv('Navn;Timer\nA;1;2'), /kolonner/);
 });

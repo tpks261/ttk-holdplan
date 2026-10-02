@@ -104,11 +104,13 @@
       if (!best || rows[index].length > best.header.length) best = { rows, index, header: rows[index], delimiter };
     }
     if (!best) throw new Error('Navn/Name blev ikke fundet. Første linje: ' + String(text).split(/\r?\n/)[0].slice(0, 160));
+    while (best.header.length && !best.header[best.header.length - 1].trim()) best.header.pop();
     const nameIndex = best.header.findIndex(c => ['navn', 'name'].includes(nameKey(c)));
     const data = best.rows.slice(best.index + 1).filter(row => row.some(c => c.trim()));
     if (!data.length) throw new Error('CSV-filen indeholder ingen spillere.');
     const seen = new Set();
     for (const row of data) {
+      while (row.length > best.header.length && !row[row.length - 1].trim()) row.pop();
       if (row.length !== best.header.length) throw new Error('En CSV-række har et andet antal kolonner end overskriften.');
       const name = nameKey(row[nameIndex]);
       if (!name) throw new Error('En CSV-række mangler navn.');
