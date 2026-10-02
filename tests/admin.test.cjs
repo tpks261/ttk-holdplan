@@ -28,6 +28,16 @@ test('wishes map to season schedules, completion and mismatch remain separate', 
   assert.equal(M.outsideWishes({ h: [1], dw: ['tir-15:00–16:00'], a: ['1'] }, schedules.winter), true);
 });
 
+test('Danish free-text wishes suggest every hold inside the requested days and time range', () => {
+  const player = { h: [], dw: [], note: 'Ønsker at spille mandag eller onsdag fra 16-18' };
+  assert.deepEqual(M.wishIds(player, schedules.winter), ['2', '3', '8', '9']);
+});
+
+test('English free-text wishes use the same narrow day and time-range matching', () => {
+  const player = { h: [], dw: [], note: 'Would like to play Monday or Wednesday from 16-18' };
+  assert.deepEqual(M.wishIds(player, schedules.winter), ['2', '3', '8', '9']);
+});
+
 test('assignment key preserves existing name and unknown holds', () => {
   assert.deepEqual(M.assignmentFor('Alma', { ' ALMA ': '1,99.1' }), { key: ' ALMA ', holds: ['1', '99.1'] });
   assert.throws(() => M.assignmentFor('Alma', { ' ALMA ': '1', alma: '2' }), /Flere/);

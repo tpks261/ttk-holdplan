@@ -16,10 +16,35 @@
     });
   }
   const groupCount = (assignments, id) => Object.values(assignments).filter(value => holds(value).some(h => base(h) === base(id))).length;
+  function noteWishIds(note, schedule) {
+    const text = String(note || '').toLowerCase().replace(/[–—]/g, '-');
+    const dayNames = {
+      Mandag: ['mandag', 'monday'],
+      Tirsdag: ['tirsdag', 'tuesday'],
+      Onsdag: ['onsdag', 'wednesday'],
+      Torsdag: ['torsdag', 'thursday'],
+      Fredag: ['fredag', 'friday']
+    };
+    const wishedDays = Object.entries(dayNames).filter(([, names]) => names.some(name => new RegExp('\\b' + name + '\\b').test(text))).map(([day]) => day);
+    const ranges = [...text.matchAll(/(?:fra\s*)?(\d{1,2})(?::(\d{2}))?\s*(?:-|til)\s*(\d{1,2})(?::(\d{2}))?/g)].map(match => ({
+      start: Number(match[1]) * 60 + Number(match[2] || 0),
+      end: Number(match[3]) * 60 + Number(match[4] || 0)
+    })).filter(range => range.end > range.start);
+    if (!wishedDays.length || !ranges.length) return [];
+    return schedule.filter(h => {
+      if (!wishedDays.includes(h.day)) return false;
+      const times = String(h.time).replace(/[–—]/g, '-').match(/(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?/);
+      if (!times) return false;
+      const start = Number(times[1]) * 60 + Number(times[2] || 0);
+      const end = Number(times[3]) * 60 + Number(times[4] || 0);
+      return ranges.some(range => start >= range.start && end <= range.end);
+    }).map(h => h.id);
+  }
   function wishIds(p, schedule) {
     const direct = holds(p.h);
     if (direct.length) return schedule.filter(h => direct.some(id => base(id) === base(h.id))).map(h => h.id);
-    return schedule.filter(h => (p.dw || []).some(w => timeKey(w) === timeKey(days[h.day] + '-' + h.time))).map(h => h.id);
+    const structured = schedule.filter(h => (p.dw || []).some(w => timeKey(w) === timeKey(days[h.day] + '-' + h.time))).map(h => h.id);
+    return structured.length ? structured : noteWishIds(p.note, schedule);
   }
   function outsideWishes(p, schedule) {
     if (!holds(p.h).length && !(p.dw || []).length) return false;
