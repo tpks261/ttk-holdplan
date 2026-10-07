@@ -72,6 +72,8 @@ function doPost(e) {
       return handleCsvImport_(payload.data, payload);
     }
 
+    if (payload.type === 'importBirthdates') return handleBirthdateImport_(payload);
+
     if (payload.type === 'addPlayer') {
       return handleManualPlayerAdd_(payload);
     }
@@ -231,7 +233,7 @@ function buildLoadResponse_(payload) {
   extraHoldOptions: extraHoldOptions,
   swapRequests: swapRequests,
   adminSettings: readAdminSettings_(names.season),
-  capabilities: { adminSettings: true, assignmentValidation: true }
+  capabilities: { adminSettings: true, assignmentValidation: true, birthdateImport: true }
 });
 }
 
@@ -1104,6 +1106,42 @@ function handleSwapReview_(payload) {
 
 function handleCsvImport_(text, payload) {
   return withAdminLock_(function () { return importCsvRows_(text, payload); });
+}
+
+function handleBirthdateImport_(payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty('TTK_BACKEND_TOKEN');
+  if (!expected || payload.token !== expected) return jsonOut_({ ok: false, error: 'Unauthorized birthdate import' });
+  if (!['summer', 'winter'].includes(payload.season)) return jsonOut_({ ok: false, error: 'Invalid season' });
+  if (!Array.isArray(payload.updates) || payload.updates.length > 5000) return jsonOut_({ ok: false, error: 'Invalid birthdate list' });
+  return withAdminLock_(function () {
+    const ss = SpreadsheetApp.getActiveSpreadsheet(), names = sheetNamesFor_(payload.season);
+    const sheet = ss.getSheetByName(names.players);
+    if (!sheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
+    const rows = sheet.getDataRange().getValues();
+    const known = {}, seen = {};
+    for (let i = 1; i < rows.length; i++) {
+      const key = adminNameKey_(rows[i][0]);
+      if (!key) continue;
+      if (known[key]) return jsonOut_({ ok: false, error: 'Duplicate player name in sheet' });
+      known[key] = i;
+    }
+    const changes = [];
+    for (const entry of payload.updates) {
+      const key = adminNameKey_(entry && entry.name);
+      const date = String(entry && entry.birthdate || '').trim();
+      if (!key || seen[key] || !known[key] || !/^\d{2}\.\d{2}\.\d{4}$/.test(date)) return jsonOut_({ ok: false, error: 'Invalid player or birthdate' });
+      seen[key] = true;
+      const age = calculateAgeFromDanishDate_(date);
+      if (age === '' || age < 0 || age > 120) return jsonOut_({ ok: false, error: 'Invalid birthdate' });
+      const index = known[key];
+      if (!String(rows[index][7] || '').trim()) changes.push({ row: index + 1, date, age, ageMissing: rows[index][9] === '' || rows[index][9] === null || rows[index][9] === undefined });
+    }
+    for (const change of changes) {
+      sheet.getRange(change.row, 8).setValue(change.date);
+      if (change.ageMissing) sheet.getRange(change.row, 10).setValue(change.age);
+    }
+    return jsonOut_({ ok: true, count: changes.length, skipped: payload.updates.length - changes.length });
+  });
 }
 
 function jsonOut_(obj) {

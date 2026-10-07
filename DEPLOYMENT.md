@@ -37,6 +37,19 @@ den nye backend, så vinterens kapacitet overholdes.
 Dette ændrer kun administrationen. De offentlige siders statiske skematekster
 og den gamle Google Sites-admin følger ikke de nye baneindstillinger automatisk.
 
+### Fødselsdatoer fra eksisterende deltagerlister
+
+Den nye sektion **Kun fødselsdatoer** under `/admin` → Upload CSV tager flere
+CSV-filer samtidig. Den matcher kun eksisterende spillere i den valgte sæson
+på navn og udfylder kun tomme `Birthdate`-celler (H) samt `Age` (J), hvis den
+også er tom. Navne uden match vises i forhåndsvisningen og opretter ikke nye
+spillere. Modstridende datoer i flere filer stopper hele importen. Ønsker,
+niveau, timer, tildelinger og den anden sæsons ark ændres ikke.
+
+Denne handling kræver en ny version af den eksisterende Apps Script-webapp.
+Indtil `capabilities.birthdateImport` er aktiv, kan filer forhåndsvises, men
+knappen til import er deaktiveret. Git-push alene aktiverer ikke Apps Script.
+
 ### Kontrol
 
 `node --test tests/admin.test.cjs` tester CSV, ønsker, sæsonadskillelse, bevarelse

@@ -5,6 +5,7 @@ const schedules = require('../../admin-assets/default-schedules.json');
 const READ_ACTIONS = new Set(['load']);
 const WRITE_ACTIONS = new Set([
   'addPlayer',
+  'importBirthdates',
   'importCSV',
   'reviewSwap',
   'save',
@@ -62,7 +63,7 @@ module.exports = async function backend(req, res) {
     }
 
     // Validate against fresh data before a write. New Apps Script repeats this under a lock.
-    if (['save', 'importCSV', 'addPlayer', 'saveAdminSettings', 'toggleExtraHold', 'reviewSwap'].includes(type)) {
+    if (['save', 'importBirthdates', 'importCSV', 'addPlayer', 'saveAdminSettings', 'toggleExtraHold', 'reviewSwap'].includes(type)) {
       const current = await callBackend({ type: 'load', season: payload.season, token: proxiedPayload.token });
       if (!Array.isArray(current.players) || !current.assignments || (current.season && current.season !== payload.season)) throw new Error('Ugyldige sæsondata. Intet er ændret.');
       const configuredSchedule = schedules[payload.season].map(h => ({ ...h, ...(current.adminSettings?.holds?.[h.id] || {}) }));
@@ -72,6 +73,18 @@ module.exports = async function backend(req, res) {
       });
       const groupCapacity = id => model.groupedSchedule(configuredSchedule).find(h => h.id === model.base(id))?.capacity || 0;
       if (type === 'saveAdminSettings' && !current.capabilities?.adminSettings) throw new Error('Opdatér Apps Script før baner og kapacitet kan gemmes.');
+      if (type === 'importBirthdates') {
+        if (!current.capabilities?.birthdateImport) throw new Error('Opdatér Apps Script før fødselsdatoer kan importeres.');
+        if (!Array.isArray(payload.updates) || payload.updates.length > 5000) throw new Error('Ugyldig liste med fødselsdatoer.');
+        const known = new Map(current.players.map(p => [model.nameKey(p.n), p]));
+        const seen = new Set();
+        for (const entry of payload.updates) {
+          const key = model.nameKey(entry?.name);
+          if (!key || seen.has(key) || !known.has(key) || !model.birthdateValue(entry?.birthdate)) throw new Error('Ukendt spiller eller ugyldig fødselsdato. Genindlæs og kontrollér CSV-filerne.');
+          seen.add(key);
+        }
+        proxiedPayload.updates = payload.updates.map(entry => ({ name: known.get(model.nameKey(entry.name)).n, birthdate: model.birthdateValue(entry.birthdate) }));
+      }
       if (type === 'reviewSwap' && payload.decision === 'approved' && !current.capabilities?.assignmentValidation) throw new Error('Opdatér Apps Script før holdbytter kan godkendes med korrekt kapacitet.');
       if (type === 'toggleExtraHold') {
         if (!(current.extraHoldOptions || []).some(h => String(h.hold) === payload.hold)) throw new Error('Ekstraholdet findes ikke.');

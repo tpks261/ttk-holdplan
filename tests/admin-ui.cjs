@@ -10,7 +10,7 @@ const root = path.resolve(__dirname, '..');
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     const errors = [], calls = []; let failSave = false;
     page.on('pageerror', e => errors.push(e.message));
-    const fixture = () => ({ ok: true, players: [{ n: 'Alma Test', t: 2, age: 10, level: 'Let øvet', h: [], dw: ['man-15:00–16:00','tir-15:00–16:00'], note: 'Mandag og tirsdag' }, { n: 'Emil Test', t: 1, h: [1], dw: [], level: 'Øvet' }, { n: 'Freja Test', t: 1, birthdate: '2015-01-01', h: [4], dw: [], note: '<img src=x onerror=alert(1)>' }], assignments: { 'Alma Test': '1', 'Emil Test': '1', 'Freja Test': '' }, capabilities: { adminSettings: true, assignmentValidation: true }, adminSettings: { version: 0, holds: {} }, swapRequests: [], extraHolds: [] });
+    const fixture = () => ({ ok: true, players: [{ n: 'Alma Test', t: 2, age: 10, level: 'Let øvet', h: [], dw: ['man-15:00–16:00','tir-15:00–16:00'], note: 'Mandag og tirsdag' }, { n: 'Emil Test', t: 1, h: [1], dw: [], level: 'Øvet' }, { n: 'Freja Test', t: 1, birthdate: '2015-01-01', h: [4], dw: [], note: '<img src=x onerror=alert(1)>' }], assignments: { 'Alma Test': '1', 'Emil Test': '1', 'Freja Test': '' }, capabilities: { adminSettings: true, assignmentValidation: true, birthdateImport: true }, adminSettings: { version: 0, holds: {} }, swapRequests: [], extraHolds: [] });
     const data = { winter: fixture(), summer: fixture() };
     data.summer.players = [{ n: 'Sommer Test', t: 1, h: [1] }]; data.summer.assignments = { 'Sommer Test': '1' };
     await page.route('**/*', async route => {
@@ -21,6 +21,7 @@ const root = path.resolve(__dirname, '..');
         if (body.type === 'load') return route.fulfill({ json: { ...data[body.season], season: body.season } });
         if (failSave) return route.fulfill({ json: { ok: false, error: 'Test save failure' } });
         if (body.type === 'save') data[body.season].assignments[body.name] = body.holds;
+        if (body.type === 'importBirthdates') body.updates.forEach(update => { const player = data[body.season].players.find(p => p.n === update.name); player.birthdate = update.birthdate; });
         if (body.type === 'saveAdminSettings') { data[body.season].adminSettings.holds[body.holdId] = { court: body.court, capacity: body.capacity }; data[body.season].adminSettings.version++; }
         return route.fulfill({ json: { ok: true } });
       }
@@ -73,6 +74,20 @@ const root = path.resolve(__dirname, '..');
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
     await page.screenshot({ path: process.env.ADMIN_SCREENSHOT || '/tmp/ttk-admin-tested.png', fullPage: true });
+    await page.getByRole('button', { name: 'Upload CSV', exact: true }).click();
+    await page.locator('#birthdate-files').setInputFiles([
+      {name:'første.csv',mimeType:'text/csv',buffer:Buffer.from('Navn;Født\nEmil Test;12-10-2011','latin1')},
+      {name:'anden.csv',mimeType:'text/csv',buffer:Buffer.from('Name,Birthdate\nAlma Test,10.10.2014\nUkendt,01.01.2015','utf8')}
+    ]);
+    await page.waitForFunction(() => document.querySelector('#birthdate-preview').textContent.includes('2 tomme fødselsdatoer udfyldes'));
+    assert.match(await page.locator('#birthdate-preview').innerText(), /Ukendt/);
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#import-birthdates').click();
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Fødselsdatoer importeret'));
+    assert.equal(data.winter.players.find(p => p.n === 'Emil Test').birthdate, '12.10.2011');
+    assert.equal(data.summer.players[0].birthdate, undefined);
+    assert.equal(data.winter.assignments['Alma Test'], '1,4');
+    assert.deepEqual(data.winter.players.find(p => p.n === 'Alma Test').dw, ['man-15:00–16:00','tir-15:00–16:00']);
     delete data.winter.capabilities;
     await page.getByRole('button', { name: 'Genindlæs', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('spillere hentet'));

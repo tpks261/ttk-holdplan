@@ -32,6 +32,17 @@ test('CSV handles comma, semicolon, BOM, quoted multiline fields and existing na
   assert.throws(() => M.parseCsv('Navn;Timer\nA;1;2'), /kolonner/);
 });
 
+test('birthdate preview combines multiple CSVs and only selects blank dates on existing players', () => {
+  const players = [{ n: 'Arendse Øberg', birthdate: '' }, { n: 'Alma', birthdate: '01.01.2015' }];
+  const files = ['Nr;Navn;Født;\n1;Arendse Øberg;12-10-2011;\n2;Ukendt;10-02-2014;', 'Name,Birthdate\nArendse Øberg,12.10.2011\nAlma,01.01.2015'];
+  const preview = M.birthdateUpdates(files, players);
+  assert.deepEqual(preview.updates, [{ name: 'Arendse Øberg', birthdate: '12.10.2011' }]);
+  assert.deepEqual(preview.unmatched, ['Ukendt']);
+  assert.equal(preview.existingDates, 1);
+  assert.throws(() => M.birthdateUpdates([files[0], 'Navn;Født\nArendse Øberg;13.10.2011'], players), /forskellige/);
+  assert.throws(() => M.birthdateUpdates(['Navn;Født\nArendse Øberg;31.02.2011'], players), /Ugyldig/);
+});
+
 test('wishes map to season schedules, completion and mismatch remain separate', () => {
   const p = { h: [], dw: ['tir-17:00–18:00'], a: ['1'] };
   assert.deepEqual(M.wishIds(p, schedules.winter), ['6', '13']);
@@ -107,6 +118,25 @@ test('preserving CSV import never overwrites existing players, wishes or assignm
   assert.deepEqual(h.sheets.Players.rows, summer);
 });
 
+test('birthdate import writes only blank birthdate and age cells', () => {
+  const h = scriptHarness();
+  h.sheets.WinterPlayers.appendRow(['Freja', 2, 900, '4', 'tir-15:00–16:00', 'FALSE', 'Keep wish', '', 'Øvet', '']);
+  const before = structuredClone(h.sheets.WinterPlayers.rows);
+  const assignments = structuredClone(h.sheets.WinterAssignments.rows);
+  const summer = structuredClone(h.sheets.Players.rows);
+  const result = h.post({ type: 'importBirthdates', updates: [{ name: 'Freja', birthdate: '12.10.2011' }] });
+  assert.equal(result.ok, true);
+  assert.equal(result.count, 1);
+  assert.equal(h.sheets.WinterPlayers.rows[2][7], '12.10.2011');
+  assert.equal(typeof h.sheets.WinterPlayers.rows[2][9], 'number');
+  assert.deepEqual(h.sheets.WinterPlayers.rows[2].slice(0, 7), before[2].slice(0, 7));
+  assert.deepEqual(h.sheets.WinterPlayers.rows[2][8], before[2][8]);
+  assert.deepEqual(h.sheets.WinterAssignments.rows, assignments);
+  assert.deepEqual(h.sheets.Players.rows, summer);
+  assert.equal(h.post({ type: 'importBirthdates', updates: [{ name: 'Freja', birthdate: '12.10.2011' }] }).count, 0);
+  assert.equal(h.post({ type: 'importBirthdates', updates: [{ name: 'Unknown', birthdate: '12.10.2011' }] }).ok, false);
+});
+
 test('assignment saves detect conflicts, full holds and preserve the other season', () => {
   const h = scriptHarness(), summer = structuredClone(h.sheets.Assignments.rows);
   assert.equal(h.post({ type: 'save', name: 'Alma', holds: '2', expectedHolds: '3' }).ok, false);
@@ -122,15 +152,22 @@ test('assignment saves detect conflicts, full holds and preserve the other seaso
 test('Vercel proxy scopes reads and only forwards new CSV rows to legacy backend', async () => {
   const calls = [];
   const context = vm.createContext({ Buffer, Set, console, module: { exports: {} }, require: name => name.includes('auth') ? { requireAdmin: () => ({ email: 'admin@test' }), requiredEnv: () => 'test' } : name.includes('model') ? M : schedules,
-    fetch: async (_, opts) => { const body = JSON.parse(opts.body); calls.push(body); const result = body.type === 'load' ? { ok: true, season: body.season, players: [{ n: 'Alma', t: 2 }], assignments: { Alma: '1' } } : { ok: true, count: 1 }; return { ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => result, text: async () => JSON.stringify(result) }; } });
+    fetch: async (_, opts) => { const body = JSON.parse(opts.body); calls.push(body); const result = body.type === 'load' ? { ok: true, season: body.season, players: [{ n: 'Alma', t: 2 }], assignments: { Alma: '1' }, capabilities: { birthdateImport: true } } : { ok: true, count: 1 }; return { ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => result, text: async () => JSON.stringify(result) }; } });
   vm.runInContext(fs.readFileSync(require.resolve('../api/admin/backend'), 'utf8'), context);
   async function request(body) { const req = Readable.from([Buffer.from(JSON.stringify(body))]); req.method = 'POST'; const res = { setHeader() {}, end(text) { this.body = JSON.parse(text); } }; await context.module.exports(req, res); return res; }
   assert.equal((await request({ type: 'importCSV', season: 'winter', data: 'Navn,Timer\nAlma,7\nNy,1' })).body.ok, true);
   assert.equal(calls.length, 2); assert.equal(calls[0].season, 'winter'); assert.equal(calls[1].season, 'winter');
   assert.equal(M.parseCsv(calls[1].data).data[0][0], 'Ny');
+  const birthdates = await request({ type: 'importBirthdates', season: 'winter', updates: [{ name: 'Alma', birthdate: '12-10-2011' }] });
+  assert.equal(birthdates.body.ok, true);
+  assert.equal(calls.at(-1).type, 'importBirthdates');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).updates)), [{ name: 'Alma', birthdate: '12.10.2011' }]);
   const before = calls.length;
+  assert.equal((await request({ type: 'importBirthdates', season: 'winter', updates: [{ name: 'Ukendt', birthdate: '12-10-2011' }] })).body.ok, false);
+  assert.equal(calls.length, before + 1); // Fresh load only; no birthdate write.
+  const afterRejected = calls.length;
   assert.equal((await request({ type: 'load', season: 'invalid' })).statusCode, 500);
-  assert.equal(calls.length, before);
+  assert.equal(calls.length, afterRejected);
   assert.equal((await request({ type: 'saveAdminSettings', season: 'winter' })).body.ok, false);
 });
 

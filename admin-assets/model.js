@@ -157,6 +157,45 @@
     const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
     return { csv, added: added.length, updated: updateExisting ? parsed.data.length - added.length : 0, skipped: updateExisting ? 0 : parsed.data.length - added.length, names: added.map(row => row[parsed.nameIndex]) };
   }
+  function birthdateValue(value) {
+    const raw = String(value || '').trim();
+    const danish = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2}|\d{4})$/);
+    const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!danish && !iso) return null;
+    let year = Number(danish ? danish[3] : iso[1]);
+    if (year < 100) year += year > 30 ? 1900 : 2000;
+    const day = Number(danish ? danish[1] : iso[3]);
+    const month = Number(danish ? danish[2] : iso[2]);
+    const result = `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+    return playerAge({ birthdate: result }) === null ? null : result;
+  }
+  function birthdateUpdates(csvTexts, players) {
+    const known = new Map();
+    players.forEach(player => {
+      const key = nameKey(player.n);
+      if (known.has(key)) throw new Error('Flere eksisterende spillere har samme navn: ' + player.n);
+      known.set(key, player);
+    });
+    const updates = new Map(), unmatched = new Set();
+    let existingDates = 0, missingDates = 0;
+    for (const text of csvTexts) {
+      const parsed = parseCsv(text);
+      const dateIndex = parsed.header.findIndex(h => ['født', 'fødselsdato', 'fodselsdato', 'birthdate', 'birthday', 'date of birth'].includes(nameKey(h)));
+      if (dateIndex < 0) throw new Error('CSV-filen mangler kolonnen Født/Fødselsdato.');
+      for (const row of parsed.data) {
+        const player = known.get(nameKey(row[parsed.nameIndex]));
+        if (!player) { unmatched.add(row[parsed.nameIndex]); continue; }
+        if (String(player.birthdate || '').trim()) { existingDates++; continue; }
+        if (!String(row[dateIndex] || '').trim()) { missingDates++; continue; }
+        const birthdate = birthdateValue(row[dateIndex]);
+        if (!birthdate) throw new Error('Ugyldig fødselsdato for ' + player.n + ': ' + row[dateIndex]);
+        const previous = updates.get(player.n);
+        if (previous && previous.birthdate !== birthdate) throw new Error('CSV-filerne har forskellige fødselsdatoer for ' + player.n);
+        updates.set(player.n, { name: player.n, birthdate });
+      }
+    }
+    return { updates: [...updates.values()], unmatched: [...unmatched], existingDates, missingDates };
+  }
   function decodeCsv(buffer) {
     const bytes = new Uint8Array(buffer);
     let text;
@@ -169,5 +208,5 @@
     if (text.includes('\uFFFD') || text.includes('\0')) throw new Error('Filen indeholder beskadigede tegn. Brug original-CSV’en.');
     return text;
   }
-  return { nameKey, holds, base, hours, playerAge, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv, decodeCsv };
+  return { nameKey, holds, base, hours, playerAge, birthdateValue, birthdateUpdates, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv, decodeCsv };
 });
