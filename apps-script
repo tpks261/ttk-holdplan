@@ -1118,12 +1118,12 @@ function handleBirthdateImport_(payload) {
     const sheet = ss.getSheetByName(names.players);
     if (!sheet) return jsonOut_({ ok: false, error: 'Players sheet not found' });
     const rows = sheet.getDataRange().getValues();
-    const known = {}, seen = {};
+    const known = Object.create(null), ambiguous = Object.create(null), seen = Object.create(null);
     for (let i = 1; i < rows.length; i++) {
       const key = adminNameKey_(rows[i][0]);
       if (!key) continue;
-      if (known[key]) return jsonOut_({ ok: false, error: 'Duplicate player name in sheet' });
-      known[key] = i;
+      if (known[key]) { ambiguous[key] = true; delete known[key]; }
+      else if (!ambiguous[key]) known[key] = i;
     }
     const changes = [];
     for (const entry of payload.updates) {

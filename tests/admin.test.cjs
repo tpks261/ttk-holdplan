@@ -43,6 +43,13 @@ test('birthdate preview combines multiple CSVs and only selects blank dates on e
   assert.throws(() => M.birthdateUpdates(['Navn;Født\nArendse Øberg;31.02.2011'], players), /Ugyldig/);
 });
 
+test('birthdate preview skips duplicate existing names and keeps other matches', () => {
+  const players = [{ n: 'Gustav', birthdate: '' }, { n: 'Gustav', birthdate: '' }, { n: 'Arendse', birthdate: '' }];
+  const preview = M.birthdateUpdates(['Navn;Født\nGustav;01.01.2014\nArendse;02.02.2014'], players);
+  assert.deepEqual(preview.updates, [{ name: 'Arendse', birthdate: '02.02.2014' }]);
+  assert.deepEqual(preview.skippedAmbiguous, ['Gustav']);
+});
+
 test('wishes map to season schedules, completion and mismatch remain separate', () => {
   const p = { h: [], dw: ['tir-17:00–18:00'], a: ['1'] };
   assert.deepEqual(M.wishIds(p, schedules.winter), ['6', '13']);
@@ -135,6 +142,19 @@ test('birthdate import writes only blank birthdate and age cells', () => {
   assert.deepEqual(h.sheets.Players.rows, summer);
   assert.equal(h.post({ type: 'importBirthdates', updates: [{ name: 'Freja', birthdate: '12.10.2011' }] }).count, 0);
   assert.equal(h.post({ type: 'importBirthdates', updates: [{ name: 'Unknown', birthdate: '12.10.2011' }] }).ok, false);
+});
+
+test('birthdate import ignores unrelated duplicate names but rejects updating them', () => {
+  const h = scriptHarness();
+  h.sheets.WinterPlayers.appendRow(['Gustav', 1, 0, '', '', 'TRUE', '', '', '', '']);
+  h.sheets.WinterPlayers.appendRow(['Gustav', 1, 0, '', '', 'TRUE', '', '', '', '']);
+  const result = h.post({ type: 'importBirthdates', updates: [{ name: 'Alma', birthdate: '12.10.2011' }] });
+  assert.equal(result.ok, true);
+  assert.equal(result.count, 1);
+  assert.equal(h.sheets.WinterPlayers.rows[1][7], '12.10.2011');
+  assert.equal(h.post({ type: 'importBirthdates', updates: [{ name: 'Gustav', birthdate: '12.10.2011' }] }).ok, false);
+  assert.equal(h.sheets.WinterPlayers.rows[2][7], '');
+  assert.equal(h.sheets.WinterPlayers.rows[3][7], '');
 });
 
 test('assignment saves detect conflicts, full holds and preserve the other season', () => {

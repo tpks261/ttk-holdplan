@@ -170,20 +170,22 @@
     return playerAge({ birthdate: result }) === null ? null : result;
   }
   function birthdateUpdates(csvTexts, players) {
-    const known = new Map();
+    const known = new Map(), ambiguous = new Set();
     players.forEach(player => {
       const key = nameKey(player.n);
-      if (known.has(key)) throw new Error('Flere eksisterende spillere har samme navn: ' + player.n);
-      known.set(key, player);
+      if (known.has(key)) { ambiguous.add(key); known.delete(key); }
+      else if (!ambiguous.has(key)) known.set(key, player);
     });
-    const updates = new Map(), unmatched = new Set();
+    const updates = new Map(), unmatched = new Set(), skippedAmbiguous = new Set();
     let existingDates = 0, missingDates = 0;
     for (const text of csvTexts) {
       const parsed = parseCsv(text);
       const dateIndex = parsed.header.findIndex(h => ['født', 'fødselsdato', 'fodselsdato', 'birthdate', 'birthday', 'date of birth'].includes(nameKey(h)));
       if (dateIndex < 0) throw new Error('CSV-filen mangler kolonnen Født/Fødselsdato.');
       for (const row of parsed.data) {
-        const player = known.get(nameKey(row[parsed.nameIndex]));
+        const key = nameKey(row[parsed.nameIndex]);
+        if (ambiguous.has(key)) { skippedAmbiguous.add(row[parsed.nameIndex]); continue; }
+        const player = known.get(key);
         if (!player) { unmatched.add(row[parsed.nameIndex]); continue; }
         if (String(player.birthdate || '').trim()) { existingDates++; continue; }
         if (!String(row[dateIndex] || '').trim()) { missingDates++; continue; }
@@ -194,7 +196,7 @@
         updates.set(player.n, { name: player.n, birthdate });
       }
     }
-    return { updates: [...updates.values()], unmatched: [...unmatched], existingDates, missingDates };
+    return { updates: [...updates.values()], unmatched: [...unmatched], skippedAmbiguous: [...skippedAmbiguous], existingDates, missingDates };
   }
   function decodeCsv(buffer) {
     const bytes = new Uint8Array(buffer);

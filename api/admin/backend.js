@@ -76,7 +76,12 @@ module.exports = async function backend(req, res) {
       if (type === 'importBirthdates') {
         if (!current.capabilities?.birthdateImport) throw new Error('Opdatér Apps Script før fødselsdatoer kan importeres.');
         if (!Array.isArray(payload.updates) || payload.updates.length > 5000) throw new Error('Ugyldig liste med fødselsdatoer.');
-        const known = new Map(current.players.map(p => [model.nameKey(p.n), p]));
+        const known = new Map(), ambiguous = new Set();
+        current.players.forEach(player => {
+          const key = model.nameKey(player.n);
+          if (known.has(key)) { known.delete(key); ambiguous.add(key); }
+          else if (!ambiguous.has(key)) known.set(key, player);
+        });
         const seen = new Set();
         for (const entry of payload.updates) {
           const key = model.nameKey(entry?.name);
