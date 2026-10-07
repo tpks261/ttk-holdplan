@@ -10,7 +10,7 @@ const root = path.resolve(__dirname, '..');
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     const errors = [], calls = []; let failSave = false;
     page.on('pageerror', e => errors.push(e.message));
-    const fixture = () => ({ ok: true, players: [{ n: 'Alma Test', t: 2, age: 10, level: 'Let øvet', h: [], dw: ['man-15:00–16:00','tir-15:00–16:00'], note: 'Mandag og tirsdag' }, { n: 'Emil Test', t: 1, h: [1], dw: [], level: 'Øvet' }, { n: 'Freja Test', t: 1, h: [4], dw: [], note: '<img src=x onerror=alert(1)>' }], assignments: { 'Alma Test': '1', 'Emil Test': '1', 'Freja Test': '' }, capabilities: { adminSettings: true, assignmentValidation: true }, adminSettings: { version: 0, holds: {} }, swapRequests: [], extraHolds: [] });
+    const fixture = () => ({ ok: true, players: [{ n: 'Alma Test', t: 2, age: 10, level: 'Let øvet', h: [], dw: ['man-15:00–16:00','tir-15:00–16:00'], note: 'Mandag og tirsdag' }, { n: 'Emil Test', t: 1, h: [1], dw: [], level: 'Øvet' }, { n: 'Freja Test', t: 1, birthdate: '2015-01-01', h: [4], dw: [], note: '<img src=x onerror=alert(1)>' }], assignments: { 'Alma Test': '1', 'Emil Test': '1', 'Freja Test': '' }, capabilities: { adminSettings: true, assignmentValidation: true }, adminSettings: { version: 0, holds: {} }, swapRequests: [], extraHolds: [] });
     const data = { winter: fixture(), summer: fixture() };
     data.summer.players = [{ n: 'Sommer Test', t: 1, h: [1] }]; data.summer.assignments = { 'Sommer Test': '1' };
     await page.route('**/*', async route => {
@@ -32,6 +32,7 @@ const root = path.resolve(__dirname, '..');
     await page.getByRole('heading', { name: 'Holdbytteanmodninger · 0', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Mangler tildeling: 2', exact: true }).click();
     assert.equal(await page.locator('#player-list .player-item').count(), 2);
+    assert.match(await page.locator('[data-player="Freja Test"]').first().innerText(), new RegExp(String(new Date().getFullYear() - 2015) + ' år'));
     assert.equal(await page.locator('[data-assign="4"]').isVisible(), true); // Tuesday wish maps to winter, not summer.
     await page.locator('#manual-hold').fill('4');
     await page.locator('#manual-assignment').getByRole('button', { name: 'Tildel', exact: true }).click();

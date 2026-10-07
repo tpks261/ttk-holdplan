@@ -6,6 +6,17 @@ const { Readable } = require('node:stream');
 const M = require('../admin-assets/model');
 const schedules = require('../admin-assets/default-schedules.json');
 
+test('player age uses saved age or calculates from a birthdate', () => {
+  const today = new Date(2026, 9, 7);
+  assert.equal(M.playerAge({ age: 11, birthdate: '01.01.2000' }, today), 11);
+  assert.equal(M.playerAge({ age: '', birthdate: '07.10.2014' }, today), 12);
+  assert.equal(M.playerAge({ birthdate: '08.10.2014' }, today), 11);
+  assert.equal(M.playerAge({ birthdate: '2014-10-07' }, today), 12);
+  assert.equal(M.playerAge({ birthdate: 'Mon Oct 07 2014 00:00:00 GMT+0200' }, today), 12);
+  assert.equal(M.playerAge({ birthdate: '31.02.2014' }, today), null);
+  assert.equal(M.playerAge({}, today), null);
+});
+
 test('CSV handles comma, semicolon, BOM, quoted multiline fields and existing names', () => {
   for (const separator of [',', ';', '\t']) {
     const csv = '\uFEFFNavn' + separator + 'Meddelelse\r\n"Ny Spiller"' + separator + '"Tirsdag, tak\n15-16"\r\nEksisterende' + separator + 'Bevares';

@@ -8,6 +8,30 @@
   const holds = value => [...new Set((Array.isArray(value) ? value : String(value || '').split(/[;,]/)).map(x => String(x).trim()).filter(Boolean))];
   const base = id => String(Math.floor(Number(id)));
   const hours = p => Math.max(1, Number(p.t) || 1);
+  function playerAge(player, today = new Date()) {
+    const saved = Number(player.age);
+    if (player.age !== '' && player.age !== null && player.age !== undefined && Number.isInteger(saved) && saved >= 0 && saved <= 120) return saved;
+    const raw = player.birthdate;
+    if (!raw) return null;
+    let birth;
+    if (raw instanceof Date) birth = raw;
+    else {
+      const value = String(raw).trim();
+      const danish = value.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2}|\d{4})$/);
+      const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:T.*)?$/);
+      if (danish || iso) {
+        let year = Number(danish ? danish[3] : iso[1]);
+        if (year < 100) year += year > 30 ? 1900 : 2000;
+        const month = Number(danish ? danish[2] : iso[2]) - 1;
+        const day = Number(danish ? danish[1] : iso[3]);
+        birth = new Date(year, month, day);
+        if (birth.getFullYear() !== year || birth.getMonth() !== month || birth.getDate() !== day) return null;
+      } else birth = new Date(value);
+    }
+    if (Number.isNaN(birth.getTime())) return null;
+    const age = today.getFullYear() - birth.getFullYear() - (today.getMonth() < birth.getMonth() || today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate() ? 1 : 0);
+    return age >= 0 && age <= 120 ? age : null;
+  }
   const timeKey = value => String(value).replace(/[–—]/g, '-').replace(/\s/g, '');
   function groupedSchedule(schedule) {
     return schedule.filter(h => h.id === base(h.id)).map(h => {
@@ -145,5 +169,5 @@
     if (text.includes('\uFFFD') || text.includes('\0')) throw new Error('Filen indeholder beskadigede tegn. Brug original-CSV’en.');
     return text;
   }
-  return { nameKey, holds, base, hours, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv, decodeCsv };
+  return { nameKey, holds, base, hours, playerAge, groupedSchedule, groupCount, wishIds, outsideWishes, formatWish, exportList, assignmentFor, parseRows, parseCsv, newPlayersCsv, decodeCsv };
 });
