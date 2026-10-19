@@ -1,4 +1,6 @@
 const { requiredEnv } = require('./_lib/auth');
+const schedules = require('../admin-assets/default-schedules.json');
+const model = require('../admin-assets/model');
 
 function parseHolds(value) {
   if (Array.isArray(value)) return value.map(String).map(v => v.trim()).filter(Boolean);
@@ -10,6 +12,13 @@ function parseHolds(value) {
 }
 
 function publicPayload(raw, season) {
+  const settings = raw.adminSettings?.holds || {};
+  const configured = schedules[season].map(h => ({ ...h, ...(settings[h.id] || {}) }));
+  (raw.extraHolds || []).forEach(value => {
+    const id = String(value), parent = schedules[season].find(h => h.id === model.base(id));
+    if (parent && !configured.some(h => h.id === id)) configured.push({ ...parent, id, ...(settings[id] || {}) });
+  });
+  const capacities = Object.fromEntries(model.groupedSchedule(configured).map(h => [h.id, h.capacity]));
   const players = Array.isArray(raw.players)
     ? raw.players
         .map(player => ({ n: String(player.n || player.name || '').trim() }))
@@ -29,6 +38,7 @@ function publicPayload(raw, season) {
     season,
     players,
     assignments,
+    capacities,
     extraHolds: Array.isArray(raw.extraHolds) ? raw.extraHolds.map(String).filter(Boolean) : []
   };
 }
