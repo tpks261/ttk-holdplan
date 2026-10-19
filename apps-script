@@ -257,13 +257,16 @@ function writeAssignmentRow_(payload) {
 
   for (let i = 1; i < values.length; i++) {
     if (String(values[i][0] || '').trim() === name) {
-      sheet.getRange(i + 1, 2).setValue(holds);
+      sheet.getRange(i + 1, 2).setNumberFormat('@').setValue(holds);
       found = true;
       break;
     }
   }
 
-  if (!found) sheet.appendRow([name, holds]);
+  if (!found) {
+    sheet.appendRow([name, '']);
+    sheet.getRange(sheet.getLastRow(), 2).setNumberFormat('@').setValue(holds);
+  }
 
   return jsonOut_({ ok: true });
 }
@@ -778,7 +781,7 @@ function reviewSwapRows_(payload) {
     const filteredHolds = holds.filter(hold => baseHold_(hold) !== fromBase);
 
     if (!filteredHolds.includes(newTargetHold)) filteredHolds.push(newTargetHold);
-    assignmentsSheet.getRange(assignmentRow, 2).setValue(formatHoldsList_(filteredHolds));
+    assignmentsSheet.getRange(assignmentRow, 2).setNumberFormat('@').setValue(formatHoldsList_(filteredHolds));
   }
 
   requestSheet.getRange(requestRow, 6).setValue(decision);
